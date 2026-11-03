@@ -407,10 +407,18 @@ private fun DriverPanel(
 ) {
     val context = LocalContext.current
     Column(modifier) {
-        // The cover as large as the room allows, the rating pair (like · dislike) in a column next to it
-        Row(Modifier.fillMaxWidth().weight(1f), verticalAlignment = Alignment.CenterVertically) {
+        // The cover in the middle, flanked by the rating pair: dislike on the left, like on the right
+        Row(
+            Modifier.fillMaxWidth().weight(1f),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            FlatRound(u(92f), stringResource(R.string.cd_ne_nravitsya), onClick = onDislike) {
+                Icon(Icons.Rounded.HeartBroken, contentDescription = null, tint = Color.White, modifier = Modifier.size(u(40f)))
+            }
             Box(
                 Modifier
+                    .padding(horizontal = u(20f))
                     .fillMaxHeight()
                     .aspectRatio(1f, matchHeightConstraintsFirst = true)
                     .clip(RoundedCornerShape(u(24f)))
@@ -423,21 +431,14 @@ private fun DriverPanel(
                     modifier = Modifier.fillMaxSize()
                 )
             }
-            Spacer(Modifier.weight(1f))
-            Column(verticalArrangement = Arrangement.spacedBy(u(18f))) {
-                FlatRound(u(96f), stringResource(R.string.cd_nravitsya), onClick = onLike) {
-                    Icon(
-                        if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                        contentDescription = null,
-                        tint = if (isLiked) Color(0xFFFF4D6D) else Color.White,
-                        modifier = Modifier.size(u(42f))
-                    )
-                }
-                FlatRound(u(96f), stringResource(R.string.cd_ne_nravitsya), onClick = onDislike) {
-                    Icon(Icons.Rounded.HeartBroken, contentDescription = null, tint = Color.White, modifier = Modifier.size(u(40f)))
-                }
+            FlatRound(u(92f), stringResource(R.string.cd_nravitsya), onClick = onLike) {
+                Icon(
+                    if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                    contentDescription = null,
+                    tint = if (isLiked) Color(0xFFFF4D6D) else Color.White,
+                    modifier = Modifier.size(u(42f))
+                )
             }
-            Spacer(Modifier.weight(1f))
         }
 
         Spacer(Modifier.height(u(22f)))
