@@ -90,7 +90,9 @@ class CarSplitScreenshotTest {
                             onPlayDownloaded = {}, onExit = {}, isLandscape = true, progress = { 82_000L }, durationMs = 215_000,
                             nextTrack = next, source = PlaylistSource.PLAYLIST, playlists = playlists, startingPlaylistKind = "1004",
                             shuffleEnabled = shuffle,
-                            lyrics = if (withLyrics) lyrics else null
+                            lyrics = if (withLyrics) lyrics else null,
+                            queue = listOf(next, track("3", "Кукушка", "Кино"), track("4", "Перемен", "Кино")),
+                            repeatOne = !shuffle
                         )
                     }
                 }
@@ -131,6 +133,10 @@ class CarSplitScreenshotTest {
     @Test
     @Config(qualifiers = "w1040dp-h610dp-land-mdpi")
     fun splitWideLyrics() { show(withLyrics = true); snap("split_1040x610_lyrics") }
+
+    @Test
+    @Config(qualifiers = "w1040dp-h610dp-land-mdpi")
+    fun splitWideQueue() { show(); compose.onNodeWithContentDescription("Далее в очереди").performClick(); frames(); snap("split_1040x610_queue") }
 
     // No split: the whole 1920×720 screen
     @Test

@@ -77,6 +77,10 @@ class PlaybackController @Inject constructor(
     private val _currentPlaylist = MutableStateFlow<List<TrackDetailsDto>>(emptyList())
     val currentPlaylist: StateFlow<List<TrackDetailsDto>> = _currentPlaylist.asStateFlow()
 
+    private val _repeatOne = MutableStateFlow(false)
+    /** Repeat the current track when it ends (a manual "next" still moves on). */
+    val repeatOne: StateFlow<Boolean> = _repeatOne.asStateFlow()
+
     private val _shuffleEnabled = MutableStateFlow(false)
     /** Shuffle mode (remembered between launches); has no effect on My Wave. */
     val shuffleEnabled: StateFlow<Boolean> = _shuffleEnabled.asStateFlow()
@@ -311,6 +315,12 @@ class PlaybackController @Inject constructor(
         playTrack(radioTrack.idString, listOf(radioTrack), PlaylistSource.RADIO)
     }
 
+    fun toggleRepeatOne() {
+        _repeatOne.value = !_repeatOne.value
+        // The standby player must hold the right "next": this track again, or the queue's next
+        prepareNextTrackInQueue()
+    }
+
     fun toggleShuffle() = setShuffle(!_shuffleEnabled.value)
 
     /** Turns shuffle on or off; the playing queue is mixed (or put back in order) around the current track. */
@@ -380,6 +390,13 @@ class PlaybackController @Inject constructor(
         }
         if (current.isRadio) {
             stepRadioStation(current, +1)
+            return
+        }
+
+        // Repeat one: the track ended by itself, so it starts over
+        if (isAuto && _repeatOne.value) {
+            val queue = _currentPlaylist.value
+            playTrack(current.idString, if (queue.any { it.idString == current.idString }) queue else listOf(current))
             return
         }
 
@@ -732,6 +749,10 @@ class PlaybackController @Inject constructor(
     private fun prepareNextTrackInQueue() {
         val current = _currentTrack.value ?: return
         if (current.isRadio) return
+        if (_repeatOne.value) {
+            prepareStandby(current)
+            return
+        }
         val playlist = _currentPlaylist.value
         val currentIndex = playlist.indexOfFirst { it.idString == current.idString }
 

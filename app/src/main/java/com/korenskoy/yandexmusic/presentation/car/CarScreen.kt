@@ -1,16 +1,6 @@
 package com.korenskoy.yandexmusic.presentation.car
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -19,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -29,21 +20,31 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.HeartBroken
+import androidx.compose.material.icons.rounded.LibraryMusic
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material.icons.rounded.Shuffle
-import androidx.compose.material.icons.rounded.Subtitles
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
+import androidx.compose.material.icons.rounded.Subtitles
 import androidx.compose.material.icons.rounded.Waves
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -57,10 +58,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
@@ -79,27 +80,13 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
-import coil3.request.crossfade
 import com.korenskoy.yandexmusic.R
 import com.korenskoy.yandexmusic.data.dto.TrackDetailsDto
-import com.korenskoy.yandexmusic.data.player.PlaylistSource
-import com.korenskoy.yandexmusic.data.player.PlaybackQueue
 import com.korenskoy.yandexmusic.data.dto.UserPlaylistDto
-import com.korenskoy.yandexmusic.presentation.hifi.ArtworkTint
-import com.korenskoy.yandexmusic.presentation.hifi.HiFi
-import com.korenskoy.yandexmusic.presentation.hifi.HiFiBackdrop
-import com.korenskoy.yandexmusic.presentation.hifi.HiFiKnob
-import com.korenskoy.yandexmusic.presentation.hifi.HiFiMotion
-import com.korenskoy.yandexmusic.presentation.hifi.LocalArtworkTint
-import com.korenskoy.yandexmusic.presentation.hifi.LocalHiFiLite
-import com.korenskoy.yandexmusic.presentation.hifi.PlayPauseGlyph
-import com.korenskoy.yandexmusic.presentation.hifi.RingMode
-import com.korenskoy.yandexmusic.presentation.hifi.SpectrumRing
-import com.korenskoy.yandexmusic.presentation.hifi.hifiAnodized
-import com.korenskoy.yandexmusic.presentation.hifi.hifiGlass
-import com.korenskoy.yandexmusic.presentation.hifi.hifiGrain
-import com.korenskoy.yandexmusic.presentation.hifi.hifiRecessed
-import com.korenskoy.yandexmusic.utils.browserUserAgent
+import com.korenskoy.yandexmusic.data.lyrics.Lyrics
+import com.korenskoy.yandexmusic.data.player.PlaybackQueue
+import com.korenskoy.yandexmusic.data.player.PlaylistSource
+import com.korenskoy.yandexmusic.presentation.lyrics.LyricsView
 import com.korenskoy.yandexmusic.utils.toCoverUrl
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
@@ -109,10 +96,10 @@ import java.util.Locale
 /** Time source of the car clock; screenshot tests pin it. */
 val LocalCarClock = androidx.compose.runtime.staticCompositionLocalOf<() -> Long> { System::currentTimeMillis }
 
-/** The source tiles of the dock, in order. */
+/** The source tiles under the cover, in order. */
 enum class CarSource { WAVE, LIKED, PLAYLISTS, DOWNLOADED }
 
-/** Which dock tile is lit for the playing [source]. Pure; unit-tested. */
+/** Which source tile is lit for the playing [source]. Pure; unit-tested. */
 fun carSourceOf(source: PlaylistSource, isRadio: Boolean): CarSource? = when {
     isRadio -> null
     source == PlaylistSource.VIBE -> CarSource.WAVE
@@ -132,15 +119,40 @@ fun carTimeReadout(positionMs: Long, durationMs: Long): Pair<String, String> {
     return fmt(position) to "−" + fmt((durationMs - position).coerceAtLeast(0L))
 }
 
+/** "1 трек", "3 трека", "25 треков". Pure; unit-tested. */
+fun tracksLabel(count: Int): String {
+    val mod100 = count % 100
+    val mod10 = count % 10
+    val word = when {
+        mod100 in 11..14 -> "треков"
+        mod10 == 1 -> "трек"
+        mod10 in 2..4 -> "трека"
+        else -> "треков"
+    }
+    return "$count $word"
+}
+
+/** Flat dark palette of the car screen: solid surfaces, no gradients, glass or shadows. */
+private object Flat {
+    val Ground = Color(0xFF0E1013)
+    val Surface = Color(0xFF1A1D22)
+    val SurfaceHigh = Color(0xFF262A31)
+    val TextDim = Color(0xFF9AA1AB)
+    val Accent = Color(0xFF3D8BFF)
+    val AccentSoft = Color(0x383D8BFF)
+}
+
+/** What takes the cover's place on the far side. */
+private enum class Panel { NONE, PLAYLISTS, QUEUE }
+
 /**
- * "В авто" — the screen people spend the most time on, built like the digital instrument cluster of a
- * premium car: the driver's side holds a gauge (a large metal knob in a spectrum ring that is also the
- * track progress), knobs for previous/next and a dock of sources; the far side holds the cover with a
- * glass "next" plate. Everything is laid out for 1280×720 and scaled to the head unit, mirrored for
- * right-hand drive.
+ * "В авто": a flat, low-cost layout for a head unit, also in a split window next to the navigator.
+ * The driver's side has the title, a seek bar, three big pill buttons and a bar of toggles; the far
+ * side has the cover (or the lyrics, playlists, queue) over the source tiles. Laid out in design units
+ * scaled to the window, mirrored for right-hand drive.
  *
- * [progress] is read where it is drawn (ring) or once a second (readout), so the screen is not
- * recomposed on every progress tick.
+ * [progress] is read where it is drawn (bar) or once a second (times), so the screen is not recomposed
+ * on every progress tick.
  */
 @Composable
 fun CarScreen(
@@ -172,14 +184,17 @@ fun CarScreen(
     onOpenPlaylists: () -> Unit = {},
     shuffleEnabled: Boolean = false,
     onToggleShuffle: () -> Unit = {},
-    lyrics: com.korenskoy.yandexmusic.data.lyrics.Lyrics? = null,
+    lyrics: Lyrics? = null,
     showLyrics: Boolean = true,
-    onToggleLyrics: () -> Unit = {}
+    onToggleLyrics: () -> Unit = {},
+    repeatOne: Boolean = false,
+    onToggleRepeat: () -> Unit = {},
+    queue: List<TrackDetailsDto> = emptyList(),
+    onQueueTrackClick: (String) -> Unit = {}
 ) {
     androidx.activity.compose.BackHandler(onBack = onExit)
-    // The playlist picker takes the cover's place; Back closes it first
-    var showPlaylists by remember { mutableStateOf(false) }
-    androidx.activity.compose.BackHandler(enabled = showPlaylists) { showPlaylists = false }
+    var panel by remember { mutableStateOf(Panel.NONE) }
+    androidx.activity.compose.BackHandler(enabled = panel != Panel.NONE) { panel = Panel.NONE }
     val view = androidx.compose.ui.platform.LocalView.current
     DisposableEffect(Unit) {
         view.keepScreenOn = true
@@ -191,41 +206,32 @@ fun CarScreen(
 
     val playPause = { if (!isPlaying && currentTrack == null) onPlayMyVibe() else onPlayPauseClick() }
     val isRadio = currentTrack?.isRadio == true
-    val active = if (showPlaylists) CarSource.PLAYLISTS else carSourceOf(source, isRadio)
-    // Shuffle means nothing for the endless wave (and radio)
-    val showShuffle = currentTrack != null && !isRadio && PlaybackQueue.shuffleApplies(source)
-    val pickPlaylist: (UserPlaylistDto) -> Unit = { onPlayPlaylist(it); showPlaylists = false }
-    // Lyrics take the cover's place whenever the track has them (and the user has not switched them off)
-    val lyricsShown = lyrics != null && showLyrics
-    val sourceLabel = when (active) {
+    val playing = carSourceOf(source, isRadio)
+    val active = if (panel == Panel.PLAYLISTS) CarSource.PLAYLISTS else playing
+    val sourceLabel = when (playing) {
         CarSource.WAVE -> stringResource(R.string.car_source_wave)
         CarSource.LIKED -> stringResource(R.string.library_liked)
-        CarSource.PLAYLISTS -> if (showPlaylists) "" else stringResource(R.string.car_source_playlists)
+        CarSource.PLAYLISTS -> stringResource(R.string.car_source_playlists)
         CarSource.DOWNLOADED -> stringResource(R.string.car_source_downloaded)
-        else -> ""
+        null -> ""
     }
-    val coverUrl = currentTrack?.coverUri.toCoverUrl("400x400")
-    val tint = LocalArtworkTint.current
-    val ringMode = when {
-        isBuffering -> RingMode.Loading
-        isPlaying -> RingMode.Playing
-        else -> RingMode.Paused
-    }
-    val fraction = { if (durationMs > 0 && !isRadio) progress().toFloat() / durationMs else 0f }
+    val showShuffle = currentTrack != null && !isRadio && PlaybackQueue.shuffleApplies(source)
+    val lyricsShown = lyrics != null && showLyrics
+    val pickPlaylist: (UserPlaylistDto) -> Unit = { onPlayPlaylist(it); panel = Panel.NONE }
     val sources = listOf(
-        DockItem(CarSource.WAVE, Icons.Rounded.Waves, stringResource(R.string.car_source_wave), onPlayMyVibe),
-        DockItem(CarSource.LIKED, Icons.Rounded.Favorite, stringResource(R.string.car_source_liked), onPlayFavorites),
-        DockItem(CarSource.PLAYLISTS, Icons.AutoMirrored.Rounded.QueueMusic, stringResource(R.string.car_source_playlists)) {
-            showPlaylists = !showPlaylists
-            if (showPlaylists) onOpenPlaylists()
+        SourceItem(CarSource.WAVE, Icons.Rounded.Waves, stringResource(R.string.car_source_wave), onPlayMyVibe),
+        SourceItem(CarSource.LIKED, Icons.Rounded.Favorite, stringResource(R.string.car_source_liked), onPlayFavorites),
+        SourceItem(CarSource.PLAYLISTS, Icons.AutoMirrored.Rounded.QueueMusic, stringResource(R.string.car_source_playlists)) {
+            panel = if (panel == Panel.PLAYLISTS) Panel.NONE else Panel.PLAYLISTS
+            if (panel == Panel.PLAYLISTS) onOpenPlaylists()
         },
-        DockItem(CarSource.DOWNLOADED, Icons.Rounded.DownloadDone, stringResource(R.string.car_source_downloaded), onPlayDownloaded)
+        SourceItem(CarSource.DOWNLOADED, Icons.Rounded.DownloadDone, stringResource(R.string.car_source_downloaded), onPlayDownloaded)
     )
 
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .background(HiFi.Ground)
+            .background(Flat.Ground)
             .pointerInput(Unit) {
                 detectHorizontalDragGestures { _, dragAmount ->
                     if (dragAmount > 50) onPrevClick() else if (dragAmount < -50) onNextClick()
@@ -233,134 +239,106 @@ fun CarScreen(
             }
             .pointerInput(Unit) { detectTapGestures(onDoubleTap = { playPause() }) }
     ) {
-        // Scale the 1280×720 (landscape) or 600×1060 (portrait) layout to this head unit
-        // Landscape needs 1140 design units across (driver panel + a 360 cover) and 720 down: in a narrower
-        // split window the layout keeps its height and the cover gives up width, instead of shrinking it all
-        val s = if (isLandscape) minOf(maxWidth / 1140.dp, maxHeight / 720.dp) else minOf(maxWidth / 600.dp, maxHeight / 1060.dp)
-        val u = Scale(s.coerceIn(0.55f, 2f))
-        val farFocus = if (isLandscape) Offset(if (steeringWheelOnLeft) 0.78f else 0.22f, 0.45f) else Offset(0.5f, 0.25f)
-        HiFiBackdrop(tint = tint, coverUrl = coverUrl, glowCenter = farFocus, bottomFade = !isLandscape)
-        if (isLandscape) {
-            // Darken the driver's side so text reads at a glance
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .drawWithCache {
-                        val shade = Brush.horizontalGradient(
-                            0f to HiFi.Ground.copy(alpha = 0.92f), 0.42f to HiFi.Ground.copy(alpha = 0.72f), 0.78f to Color.Transparent,
-                            startX = if (steeringWheelOnLeft) 0f else size.width,
-                            endX = if (steeringWheelOnLeft) size.width else 0f
-                        )
-                        onDrawBehind { drawRect(shade) }
-                    }
-            )
-        }
+        // Landscape needs 1100 units across (driver side + a 360 cover) and 720 down: a narrower split
+        // window keeps the height and the cover gives up width
+        val s = if (isLandscape) minOf(maxWidth / 1100.dp, maxHeight / 720.dp) else minOf(maxWidth / 600.dp, maxHeight / 1060.dp)
+        val u = Scale(s.coerceIn(0.5f, 2f))
 
-        // The theme's fixed 24sp line height would not follow the head-unit scale and clip small text:
-        // lines follow the (scaled) font instead
-        androidx.compose.runtime.CompositionLocalProvider(
-            androidx.compose.material3.LocalTextStyle provides androidx.compose.material3.LocalTextStyle.current.copy(lineHeight = TextUnit.Unspecified)
-        ) {
-        Column(Modifier.fillMaxSize().systemBarsPadding()) {
-            CarHeader(u, onExit)
-            if (isLandscape) {
-                Row(
-                    Modifier
-                        .fillMaxSize()
-                        .padding(start = u(48f), end = u(40f), bottom = u(28f)),
-                    horizontalArrangement = Arrangement.spacedBy(u(40f))
-                ) {
-                    val driver: @Composable () -> Unit = {
-                        DriverPanel(
-                            u = u, track = currentTrack, sourceLabel = sourceLabel, isPlaying = isPlaying, isLiked = isLiked,
-                            ringMode = ringMode, fraction = fraction, progress = progress, durationMs = durationMs, isRadio = isRadio,
-                            onPlayPause = playPause, onPrev = onPrevClick, onNext = onNextClick,
-                            onLike = { currentTrack?.let(onToggleLike) }, onDislike = { currentTrack?.let(onDislikeClick) },
-                            sources = sources, active = active,
-                            showShuffle = showShuffle, shuffleEnabled = shuffleEnabled, onToggleShuffle = onToggleShuffle,
-                            hasLyrics = lyrics != null, lyricsShown = lyricsShown, onToggleLyrics = onToggleLyrics,
-                            modifier = Modifier.width(u(652f)).fillMaxHeight()
-                        )
-                    }
-                    val far: @Composable () -> Unit = {
-                        BoxWithConstraints(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
-                            // The cover takes all the room it has (a square), however wide the split window is
-                            val coverSide = minOf(maxWidth, maxHeight)
-                            if (showPlaylists) {
-                                PlaylistsPanel(u, playlists, startingPlaylistKind, pickPlaylist, likedTrackIds.size, { onPlayFavorites(); showPlaylists = false }, { showPlaylists = false }, Modifier.fillMaxSize())
-                            } else if (lyricsShown && lyrics != null) {
-                                LyricsPanel(u, lyrics, progress, Modifier.fillMaxSize())
-                            } else {
-                                CoverWithNext(u, currentTrack, nextTrack, Modifier.size(coverSide))
-                            }
-                        }
-                    }
-                    if (steeringWheelOnLeft) { driver(); far() } else { far(); driver() }
-                }
-            } else {
-                Column(
-                    Modifier.fillMaxSize().padding(horizontal = u(28f)).padding(bottom = u(24f)),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    if (showPlaylists) {
-                        PlaylistsPanel(u, playlists, startingPlaylistKind, pickPlaylist, likedTrackIds.size, { onPlayFavorites(); showPlaylists = false }, { showPlaylists = false }, Modifier.fillMaxWidth().height(u(440f)))
-                    } else if (lyricsShown && lyrics != null) {
-                        LyricsPanel(u, lyrics, progress, Modifier.fillMaxWidth().height(u(440f)))
-                    } else {
-                        CoverWithNext(u, currentTrack, nextTrack, Modifier.size(u(440f)))
-                    }
-                    Spacer(Modifier.height(u(28f)))
-                    DriverPanel(
-                        u = u, track = currentTrack, sourceLabel = sourceLabel, isPlaying = isPlaying, isLiked = isLiked,
-                        ringMode = ringMode, fraction = fraction, progress = progress, durationMs = durationMs, isRadio = isRadio,
-                        onPlayPause = playPause, onPrev = onPrevClick, onNext = onNextClick,
-                        onLike = { currentTrack?.let(onToggleLike) }, onDislike = { currentTrack?.let(onDislikeClick) },
-                        sources = sources, active = active,
-                        showShuffle = showShuffle, shuffleEnabled = shuffleEnabled, onToggleShuffle = onToggleShuffle,
-                            hasLyrics = lyrics != null, lyricsShown = lyricsShown, onToggleLyrics = onToggleLyrics,
-                        modifier = Modifier.width(u(560f)).weight(1f),
-                        compactDock = true
+        val far: @Composable (Modifier) -> Unit = { modifier ->
+            BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
+                val side = minOf(maxWidth, maxHeight)
+                when {
+                    panel == Panel.PLAYLISTS -> PlaylistsPanel(
+                        u, playlists, startingPlaylistKind, pickPlaylist, likedTrackIds.size,
+                        { onPlayFavorites(); panel = Panel.NONE }, { panel = Panel.NONE }, Modifier.fillMaxSize()
                     )
+                    panel == Panel.QUEUE -> QueuePanel(u, queue, { onQueueTrackClick(it); panel = Panel.NONE }, { panel = Panel.NONE }, Modifier.fillMaxSize())
+                    lyricsShown && lyrics != null -> LyricsPanel(u, lyrics, progress, Modifier.fillMaxSize())
+                    else -> CoverWithNext(u, currentTrack, nextTrack, Modifier.size(side))
                 }
             }
         }
+        val driver: @Composable (Modifier) -> Unit = { modifier ->
+            DriverPanel(
+                u = u, track = currentTrack, isPlaying = isPlaying, isBuffering = isBuffering, isLiked = isLiked,
+                isRadio = isRadio, progress = progress, durationMs = durationMs, onSeek = onSeek,
+                onPlayPause = playPause, onPrev = onPrevClick, onNext = onNextClick,
+                onLike = { currentTrack?.let(onToggleLike) }, onDislike = { currentTrack?.let(onDislikeClick) },
+                showShuffle = showShuffle, shuffleEnabled = shuffleEnabled, onToggleShuffle = onToggleShuffle,
+                repeatOne = repeatOne, onToggleRepeat = onToggleRepeat,
+                queueOpen = panel == Panel.QUEUE, onToggleQueue = { panel = if (panel == Panel.QUEUE) Panel.NONE else Panel.QUEUE },
+                hasLyrics = lyrics != null, lyricsShown = lyricsShown && panel == Panel.NONE,
+                onToggleLyrics = { if (panel != Panel.NONE) panel = Panel.NONE else onToggleLyrics() },
+                modifier = modifier
+            )
+        }
+
+        androidx.compose.runtime.CompositionLocalProvider(
+            androidx.compose.material3.LocalTextStyle provides androidx.compose.material3.LocalTextStyle.current.copy(lineHeight = TextUnit.Unspecified)
+        ) {
+            Column(Modifier.fillMaxSize().systemBarsPadding()) {
+                CarHeader(u, sourceLabel, onExit)
+                if (isLandscape) {
+                    Row(
+                        Modifier.fillMaxSize().padding(start = u(40f), end = u(40f), bottom = u(28f)),
+                        horizontalArrangement = Arrangement.spacedBy(u(36f))
+                    ) {
+                        val driverSide: @Composable () -> Unit = { driver(Modifier.width(u(600f)).fillMaxHeight()) }
+                        val farSide: @Composable () -> Unit = {
+                            Column(Modifier.weight(1f).fillMaxHeight()) {
+                                far(Modifier.weight(1f).fillMaxWidth())
+                                Spacer(Modifier.height(u(16f)))
+                                SourceRow(u, sources, active)
+                            }
+                        }
+                        if (steeringWheelOnLeft) { driverSide(); farSide() } else { farSide(); driverSide() }
+                    }
+                } else {
+                    Column(Modifier.fillMaxSize().padding(horizontal = u(28f)).padding(bottom = u(24f))) {
+                        far(Modifier.fillMaxWidth().height(u(440f)))
+                        Spacer(Modifier.height(u(20f)))
+                        driver(Modifier.fillMaxWidth().weight(1f))
+                        Spacer(Modifier.height(u(16f)))
+                        SourceRow(u, sources, active)
+                    }
+                }
+            }
         }
     }
 }
 
-/** dp sizes of the 1280×720 design, scaled to the screen. */
+/** dp sizes of the design, scaled to the screen. */
 private class Scale(val factor: Float) {
     operator fun invoke(v: Float): Dp = (v * factor).dp
     fun sp(v: Float): TextUnit = (v * factor).sp
 }
 
-private data class DockItem(val source: CarSource, val icon: ImageVector, val label: String, val onClick: () -> Unit)
+private data class SourceItem(val source: CarSource, val icon: ImageVector, val label: String, val onClick: () -> Unit)
 
 @Composable
-private fun CarHeader(u: Scale, onExit: () -> Unit) {
+private fun CarHeader(u: Scale, sourceLabel: String, onExit: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(start = u(48f), end = u(40f), top = u(22f), bottom = u(10f)),
+            .padding(start = u(40f), end = u(40f), top = u(20f), bottom = u(12f)),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            Modifier
-                .size(u(56f))
-                .hifiGlass(CircleShape)
-                .clickable(role = Role.Button, onClick = onExit),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.car_exit), tint = Color.White, modifier = Modifier.size(u(26f)))
+        FlatRound(u(60f), stringResource(R.string.car_exit), onClick = onExit) {
+            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null, tint = Color.White, modifier = Modifier.size(u(28f)))
         }
         Spacer(Modifier.width(u(16f)))
-        Text(stringResource(R.string.car_label), color = Color.White.copy(alpha = 0.66f), fontSize = u.sp(14f), fontWeight = FontWeight.ExtraBold, letterSpacing = 0.16.em)
+        Column {
+            Text(stringResource(R.string.car_label), color = Flat.TextDim, fontSize = u.sp(13f), fontWeight = FontWeight.ExtraBold, letterSpacing = 0.16.em)
+            if (sourceLabel.isNotEmpty()) {
+                Text(sourceLabel, color = Color.White, fontSize = u.sp(17f), fontWeight = FontWeight.Bold, maxLines = 1)
+            }
+        }
         Spacer(Modifier.weight(1f))
         CarClock(u)
     }
 }
 
-/** Large bold time over a small-caps date, right-aligned like a dashboard; refreshes once a minute. */
+/** Large bold time over a small-caps date; refreshes once a minute. */
 @Composable
 private fun CarClock(u: Scale) {
     val clock = LocalCarClock.current
@@ -378,215 +356,375 @@ private fun CarClock(u: Scale) {
         }
     }
     Column(horizontalAlignment = Alignment.End) {
-        Text(time, color = Color.White, fontSize = u.sp(40f), lineHeight = u.sp(42f), fontWeight = FontWeight.Bold, letterSpacing = (-0.02).em, style = Tabular)
-        Text(date, color = Color.White.copy(alpha = 0.60f), fontSize = u.sp(12f), fontWeight = FontWeight.ExtraBold, letterSpacing = 0.16.em, maxLines = 1)
+        Text(time, color = Color.White, fontSize = u.sp(38f), fontWeight = FontWeight.Bold, letterSpacing = (-0.02).em, style = Tabular)
+        Text(date, color = Flat.TextDim, fontSize = u.sp(12f), fontWeight = FontWeight.ExtraBold, letterSpacing = 0.14.em, maxLines = 1)
     }
 }
 
-/** Tabular digits: the clock and the readout don't jump as numbers change. */
+/** Tabular digits: the clock and the times don't jump as numbers change. */
 private val Tabular = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum")
 
 @Composable
 private fun DriverPanel(
     u: Scale,
     track: TrackDetailsDto?,
-    sourceLabel: String,
     isPlaying: Boolean,
+    isBuffering: Boolean,
     isLiked: Boolean,
-    ringMode: RingMode,
-    fraction: () -> Float,
+    isRadio: Boolean,
     progress: () -> Long,
     durationMs: Long,
-    isRadio: Boolean,
+    onSeek: (Long) -> Unit,
     onPlayPause: () -> Unit,
     onPrev: () -> Unit,
     onNext: () -> Unit,
     onLike: () -> Unit,
     onDislike: () -> Unit,
-    sources: List<DockItem>,
-    active: CarSource?,
-    modifier: Modifier = Modifier,
-    compactDock: Boolean = false,
-    showShuffle: Boolean = false,
-    shuffleEnabled: Boolean = false,
-    onToggleShuffle: () -> Unit = {},
-    hasLyrics: Boolean = false,
-    lyricsShown: Boolean = false,
-    onToggleLyrics: () -> Unit = {}
+    showShuffle: Boolean,
+    shuffleEnabled: Boolean,
+    onToggleShuffle: () -> Unit,
+    repeatOne: Boolean,
+    onToggleRepeat: () -> Unit,
+    queueOpen: Boolean,
+    onToggleQueue: () -> Unit,
+    hasLyrics: Boolean,
+    lyricsShown: Boolean,
+    onToggleLyrics: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Column(modifier) {
-        if (sourceLabel.isNotEmpty()) {
-            Text(sourceLabel.uppercase(), color = Color.White.copy(alpha = 0.72f), fontSize = u.sp(14f), fontWeight = FontWeight.ExtraBold, letterSpacing = 0.12.em)
-        }
-        AnimatedContent(
-            targetState = track,
-            contentKey = { it?.idString },
-            transitionSpec = { (fadeIn(HiFiMotion.large()) + slideInVertically(HiFiMotion.large()) { it / 10 }) togetherWith fadeOut(HiFiMotion.quick()) },
-            label = "car_title"
-        ) { shown ->
-            Column {
+        // Title and artist, the like button next to them
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
                 Text(
-                    shown?.title ?: stringResource(R.string.car_source_wave),
+                    track?.title ?: stringResource(R.string.car_source_wave),
                     color = Color.White,
-                    fontSize = u.sp(56f),
-                    lineHeight = u.sp(62f),
+                    fontSize = u.sp(48f),
                     fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = (-0.03).em,
+                    letterSpacing = (-0.02).em,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = u(6f))
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    if (shown?.isRadio == true) stringResource(R.string.mini_player_live) else shown?.artists?.joinToString { it.name ?: "" }.orEmpty(),
-                    color = Color.White.copy(alpha = 0.72f),
+                    if (isRadio) stringResource(R.string.mini_player_live) else track?.artists?.joinToString { it.name ?: "" }.orEmpty(),
+                    color = Flat.TextDim,
                     fontSize = u.sp(26f),
-                    lineHeight = u.sp(32f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
-        }
-
-        // The gauge cluster sits midway between the title and the dock, so no empty band is left above the dock
-        Spacer(Modifier.weight(1f))
-        // The gauge cluster; in portrait (560 wide) the side controls shrink so all five fit
-        // Big enough to hit without looking (like/dislike included)
-        val sideSize = if (compactDock) 72f else 84f
-        val skipSize = if (compactDock) 88f else 96f
-        Row(
-            Modifier.fillMaxWidth().height(u(240f)).padding(top = u(0f)),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            GlassRound(u(sideSize), stringResource(R.string.cd_ne_nravitsya), onDislike) {
-                Icon(Icons.Rounded.HeartBroken, contentDescription = null, tint = Color.White.copy(alpha = 0.88f), modifier = Modifier.size(u(34f)))
-            }
-            HiFiKnob(onClick = onPrev, contentDescription = stringResource(R.string.cd_predyduschiy_trek), size = u(skipSize)) {
-                Icon(Icons.Rounded.SkipPrevious, contentDescription = null, tint = Color(0xFFF4F6FA), modifier = Modifier.size(u(38f)))
-            }
-            Box(Modifier.size(u(240f)), contentAlignment = Alignment.Center) {
-                SpectrumRing(
-                    mode = ringMode,
-                    progress = fraction,
-                    bars = if (LocalHiFiLite.current) 60 else 90,
-                    innerRadius = u(98f),
-                    maxLength = u(20f),
-                    barWidth = u(3f),
-                    modifier = Modifier.size(u(240f))
-                )
-                HiFiKnob(onClick = onPlayPause, contentDescription = stringResource(R.string.cd_vosproizvedenie_ili_pauza), size = u(176f)) {
-                    PlayPauseGlyph(isPlaying = isPlaying, size = u(56f))
-                }
-            }
-            HiFiKnob(onClick = onNext, contentDescription = stringResource(R.string.cd_sleduyuschiy_trek), size = u(skipSize)) {
-                Icon(Icons.Rounded.SkipNext, contentDescription = null, tint = Color(0xFFF4F6FA), modifier = Modifier.size(u(38f)))
-            }
-            GlassRound(u(sideSize), stringResource(R.string.cd_nravitsya), onLike) {
+            Spacer(Modifier.width(u(16f)))
+            FlatRound(u(84f), stringResource(R.string.cd_nravitsya), onClick = onLike) {
                 Icon(
                     if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                     contentDescription = null,
-                    tint = if (isLiked) HiFi.Accent else Color.White.copy(alpha = 0.88f),
-                    modifier = Modifier.size(u(34f))
+                    tint = if (isLiked) Color(0xFFFF4D6D) else Color.White,
+                    modifier = Modifier.size(u(38f))
                 )
             }
         }
-        Row(
-            Modifier.fillMaxWidth().padding(top = u(6f)),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (isRadio) LiveReadout(u) else TimeReadout(u, progress, durationMs)
-            if (showShuffle) {
-                Spacer(Modifier.width(u(20f)))
-                ToggleRound(u, Icons.Rounded.Shuffle, shuffleEnabled, stringResource(if (shuffleEnabled) R.string.car_shuffle_on else R.string.car_shuffle_off), onToggleShuffle)
+
+        Spacer(Modifier.weight(1f))
+        SeekBar(u, progress, durationMs, enabled = !isRadio && durationMs > 0, onSeek = onSeek)
+        TimeRow(u, progress, durationMs, isRadio)
+
+        Spacer(Modifier.height(u(20f)))
+        // Three big pills: previous, play/pause (white), next
+        Row(Modifier.fillMaxWidth().height(u(100f)), horizontalArrangement = Arrangement.spacedBy(u(16f))) {
+            Pill(u, stringResource(R.string.cd_predyduschiy_trek), Modifier.weight(1f), onClick = onPrev) {
+                Icon(Icons.Rounded.SkipPrevious, contentDescription = null, tint = Color.White, modifier = Modifier.size(u(48f)))
             }
-            if (hasLyrics) {
-                Spacer(Modifier.width(u(20f)))
-                ToggleRound(u, Icons.Rounded.Subtitles, lyricsShown, stringResource(if (lyricsShown) R.string.car_lyrics_hide else R.string.car_lyrics_show), onToggleLyrics)
+            Pill(u, stringResource(R.string.cd_vosproizvedenie_ili_pauza), Modifier.weight(1.3f), primary = true, onClick = onPlayPause) {
+                if (isBuffering) {
+                    CircularProgressIndicator(color = Flat.Ground, strokeWidth = u(4f), modifier = Modifier.size(u(40f)))
+                } else {
+                    Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, contentDescription = null, tint = Flat.Ground, modifier = Modifier.size(u(56f)))
+                }
+            }
+            Pill(u, stringResource(R.string.cd_sleduyuschiy_trek), Modifier.weight(1f), onClick = onNext) {
+                Icon(Icons.Rounded.SkipNext, contentDescription = null, tint = Color.White, modifier = Modifier.size(u(48f)))
             }
         }
+
         Spacer(Modifier.weight(1f))
-        Dock(u, sources, active, compact = compactDock)
-    }
-}
-
-/** Recessed display window: elapsed time in white, remaining dimmed; tabular digits don't jump. */
-@Composable
-private fun TimeReadout(u: Scale, progress: () -> Long, durationMs: Long) {
-    // Recomposes once a second, not on every progress tick
-    val seconds by remember(durationMs) { derivedStateOf { progress() / 1000L } }
-    val (elapsed, remaining) = carTimeReadout(seconds * 1000L, durationMs)
-    val description = stringResource(R.string.car_time_elapsed_remaining, elapsed, remaining.removePrefix("−"))
-    Row(
-        Modifier
-            .height(u(42f))
-            .hifiRecessed(u(21f))
-            .padding(horizontal = u(6f))
-            .semantics(mergeDescendants = true) { contentDescription = description },
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(elapsed, color = Color.White, fontSize = u.sp(21f), fontWeight = FontWeight.SemiBold, letterSpacing = 0.03.em, style = Tabular, modifier = Modifier.width(u(88f)), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-        Box(Modifier.width(1.dp).height(u(20f)).background(Color.White.copy(alpha = 0.18f)))
-        Text(remaining, color = Color.White.copy(alpha = 0.60f), fontSize = u.sp(21f), fontWeight = FontWeight.Medium, letterSpacing = 0.03.em, style = Tabular, modifier = Modifier.width(u(88f)), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-    }
-}
-
-@Composable
-private fun LiveReadout(u: Scale) {
-    Row(
-        Modifier.height(u(42f)).hifiRecessed(u(21f)).padding(horizontal = u(18f)),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(Modifier.size(u(8f)).clip(CircleShape).background(HiFi.Live))
-        Spacer(Modifier.width(u(10f)))
-        Text(stringResource(R.string.radio_on_air), color = Color.White, fontSize = u.sp(16f), fontWeight = FontWeight.ExtraBold, letterSpacing = 0.12.em)
-    }
-}
-
-/** A round on/off button next to the time readout (shuffle, lyrics): lit blue while on. */
-@Composable
-private fun ToggleRound(u: Scale, icon: ImageVector, enabled: Boolean, description: String, onClick: () -> Unit) {
-    Box(
-        Modifier
-            .size(u(80f))
-            .then(
-                if (enabled) Modifier.clip(CircleShape).background(HiFi.Accent.copy(alpha = 0.28f)).border(1.dp, HiFi.Accent, CircleShape)
-                else Modifier.hifiGlass(CircleShape, fill = Color.White.copy(alpha = 0.06f), border = Color.White.copy(alpha = 0.14f))
-            )
-            .clickable(role = Role.Switch, onClickLabel = description, onClick = onClick)
-            .semantics { contentDescription = description },
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            icon,
-            contentDescription = null,
-            tint = if (enabled) Color.White else Color.White.copy(alpha = 0.70f),
-            modifier = Modifier.size(u(38f))
-        )
-    }
-}
-
-/** Synced lyrics on a dark glass card in the cover's place. */
-@Composable
-private fun LyricsPanel(u: Scale, lyrics: com.korenskoy.yandexmusic.data.lyrics.Lyrics, progress: () -> Long, modifier: Modifier) {
-    Box(
-        modifier
-            .hifiGlass(RoundedCornerShape(u(30f)), fill = Color(0x99080A12), border = Color.White.copy(alpha = 0.10f))
-            .padding(horizontal = u(28f), vertical = u(8f))
-    ) {
-        com.korenskoy.yandexmusic.presentation.lyrics.LyricsView(
-            lyrics = lyrics,
-            progress = progress,
-            textSize = u.sp(30f),
-            lineSpacing = u(8f),
-            modifier = Modifier.fillMaxSize()
-        )
+        // Toggles, each a big round target
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(u(46f)))
+                .background(Flat.Surface)
+                .padding(horizontal = u(8f), vertical = u(6f)),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ActionButton(u, Icons.Rounded.HeartBroken, false, stringResource(R.string.cd_ne_nravitsya), onDislike)
+            if (showShuffle) {
+                ActionButton(u, Icons.Rounded.Shuffle, shuffleEnabled, stringResource(if (shuffleEnabled) R.string.car_shuffle_on else R.string.car_shuffle_off), onToggleShuffle)
+            }
+            if (!isRadio) {
+                ActionButton(u, Icons.Rounded.RepeatOne, repeatOne, stringResource(if (repeatOne) R.string.car_repeat_on else R.string.car_repeat_off), onToggleRepeat)
+                ActionButton(u, Icons.Rounded.LibraryMusic, queueOpen, stringResource(R.string.car_queue), onToggleQueue)
+            }
+            if (hasLyrics) {
+                ActionButton(u, Icons.Rounded.Subtitles, lyricsShown, stringResource(if (lyricsShown) R.string.car_lyrics_hide else R.string.car_lyrics_show), onToggleLyrics)
+            }
+        }
     }
 }
 
 /**
- * The user's playlists as big cover tiles, in the cover's place. A tap starts the playlist (shuffle mode
- * applies); the tile shows a spinner while its tracks load.
+ * The track progress as a flat bar; a tap or a drag seeks. The finger area is taller than the bar.
+ * Progress is read while drawing only.
+ */
+@Composable
+private fun SeekBar(u: Scale, progress: () -> Long, durationMs: Long, enabled: Boolean, onSeek: (Long) -> Unit) {
+    var dragFraction by remember { mutableStateOf<Float?>(null) }
+    val seekTo = { fraction: Float -> onSeek((fraction.coerceIn(0f, 1f) * durationMs).toLong()) }
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(u(44f))
+            .then(
+                if (!enabled) Modifier
+                else Modifier
+                    .pointerInput(durationMs) { detectTapGestures { seekTo(it.x / size.width) } }
+                    .pointerInput(durationMs) {
+                        detectHorizontalDragGestures(
+                            onDragStart = { dragFraction = (it.x / size.width).coerceIn(0f, 1f) },
+                            onDragEnd = { dragFraction?.let(seekTo); dragFraction = null },
+                            onDragCancel = { dragFraction = null }
+                        ) { change, _ ->
+                            change.consume()
+                            dragFraction = (change.position.x / size.width).coerceIn(0f, 1f)
+                        }
+                    }
+            )
+            .drawBehind {
+                val barHeight = u(10f).toPx()
+                val top = (size.height - barHeight) / 2f
+                val radius = CornerRadius(barHeight / 2f)
+                drawRoundRect(Flat.SurfaceHigh, Offset(0f, top), Size(size.width, barHeight), radius)
+                val fraction = dragFraction ?: if (durationMs > 0) (progress().toFloat() / durationMs).coerceIn(0f, 1f) else 0f
+                if (fraction > 0f) drawRoundRect(Color.White, Offset(0f, top), Size(size.width * fraction, barHeight), radius)
+                if (enabled) drawCircle(Color.White, radius = u(11f).toPx(), center = Offset(size.width * fraction, size.height / 2f))
+            }
+    )
+}
+
+/** Elapsed on the left, remaining on the right; recomposes once a second. */
+@Composable
+private fun TimeRow(u: Scale, progress: () -> Long, durationMs: Long, isRadio: Boolean) {
+    val seconds by remember(durationMs) { derivedStateOf { progress() / 1000L } }
+    Row(Modifier.fillMaxWidth()) {
+        if (isRadio) {
+            Text(stringResource(R.string.radio_on_air), color = Flat.TextDim, fontSize = u.sp(18f), fontWeight = FontWeight.Bold)
+        } else {
+            val (elapsed, remaining) = carTimeReadout(seconds * 1000L, durationMs)
+            Text(elapsed, color = Color.White, fontSize = u.sp(20f), fontWeight = FontWeight.SemiBold, style = Tabular)
+            Spacer(Modifier.weight(1f))
+            Text(remaining, color = Flat.TextDim, fontSize = u.sp(20f), fontWeight = FontWeight.Medium, style = Tabular)
+        }
+    }
+}
+
+@Composable
+private fun Pill(
+    u: Scale,
+    description: String,
+    modifier: Modifier,
+    primary: Boolean = false,
+    onClick: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    Box(
+        modifier
+            .fillMaxHeight()
+            .clip(RoundedCornerShape(u(50f)))
+            .background(if (primary) Color.White else Flat.Surface)
+            .clickable(role = Role.Button, onClickLabel = description, onClick = onClick)
+            .semantics { contentDescription = description },
+        contentAlignment = Alignment.Center
+    ) { content() }
+}
+
+@Composable
+private fun FlatRound(size: Dp, description: String, onClick: () -> Unit, content: @Composable () -> Unit) {
+    Box(
+        Modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(Flat.Surface)
+            .clickable(role = Role.Button, onClickLabel = description, onClick = onClick)
+            .semantics { contentDescription = description },
+        contentAlignment = Alignment.Center
+    ) { content() }
+}
+
+/** A toggle in the bottom bar: 84 units round, blue while on. */
+@Composable
+private fun ActionButton(u: Scale, icon: ImageVector, active: Boolean, description: String, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .size(u(84f))
+            .clip(CircleShape)
+            .background(if (active) Flat.AccentSoft else Color.Transparent)
+            .clickable(role = Role.Button, onClickLabel = description, onClick = onClick)
+            .semantics { contentDescription = description },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, contentDescription = null, tint = if (active) Flat.Accent else Color.White, modifier = Modifier.size(u(38f)))
+    }
+}
+
+/** Big icon tiles of the sources under the cover; the playing one is lit. */
+@Composable
+private fun SourceRow(u: Scale, items: List<SourceItem>, active: CarSource?) {
+    Row(Modifier.fillMaxWidth().height(u(84f)), horizontalArrangement = Arrangement.spacedBy(u(12f))) {
+        items.forEach { item -> SourceTile(u, item, item.source == active) }
+    }
+}
+
+@Composable
+private fun RowScope.SourceTile(u: Scale, item: SourceItem, selected: Boolean) {
+    Box(
+        Modifier
+            .weight(1f)
+            .fillMaxHeight()
+            .clip(RoundedCornerShape(u(26f)))
+            .background(if (selected) Flat.AccentSoft else Flat.Surface)
+            .clickable(role = Role.Button, onClickLabel = item.label, onClick = item.onClick)
+            .semantics { contentDescription = item.label },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(item.icon, contentDescription = null, tint = if (selected) Flat.Accent else Color.White, modifier = Modifier.size(u(42f)))
+    }
+}
+
+/** The cover, flat, with the next track on a plate over its lower edge. */
+@Composable
+private fun CoverWithNext(u: Scale, track: TrackDetailsDto?, next: TrackDetailsDto?, modifier: Modifier) {
+    val context = LocalContext.current
+    Box(
+        modifier
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(u(28f)))
+            .background(Flat.Surface)
+    ) {
+        AsyncImage(
+            model = ImageRequest.Builder(context).data(track?.coverUri.toCoverUrl("800x800")).size(800).build(),
+            contentDescription = track?.title,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
+        if (next != null) {
+            Row(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(u(14f))
+                    .fillMaxWidth()
+                    .height(u(80f))
+                    .clip(RoundedCornerShape(u(22f)))
+                    .background(Color(0xE6101215))
+                    .padding(start = u(12f), end = u(18f)),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(context).data(next.coverUri.toCoverUrl("200x200")).size(200).build(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(u(56f)).clip(RoundedCornerShape(u(12f))).background(Flat.SurfaceHigh)
+                )
+                Spacer(Modifier.width(u(14f)))
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.car_next), color = Flat.TextDim, fontSize = u.sp(11f), fontWeight = FontWeight.ExtraBold, letterSpacing = 0.18.em)
+                    Text(next.title ?: "", color = Color.White, fontSize = u.sp(20f), fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(next.artists.joinToString { it.name ?: "" }, color = Flat.TextDim, fontSize = u.sp(15f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+    }
+}
+
+/** A flat card in the cover's place with a title and a close button. */
+@Composable
+private fun PanelCard(u: Scale, title: String, onClose: () -> Unit, modifier: Modifier, content: @Composable () -> Unit) {
+    Column(
+        modifier
+            .clip(RoundedCornerShape(u(28f)))
+            .background(Flat.Surface)
+            .padding(u(20f))
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(title, color = Color.White, fontSize = u.sp(26f), fontWeight = FontWeight.ExtraBold, modifier = Modifier.weight(1f))
+            Box(
+                Modifier
+                    .size(u(60f))
+                    .clip(CircleShape)
+                    .background(Flat.SurfaceHigh)
+                    .clickable(role = Role.Button, onClick = onClose),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.car_playlists_close), tint = Color.White, modifier = Modifier.size(u(30f)))
+            }
+        }
+        Spacer(Modifier.height(u(14f)))
+        content()
+    }
+}
+
+/** Synced lyrics in the cover's place. */
+@Composable
+private fun LyricsPanel(u: Scale, lyrics: Lyrics, progress: () -> Long, modifier: Modifier) {
+    Box(
+        modifier
+            .clip(RoundedCornerShape(u(28f)))
+            .background(Flat.Surface)
+            .padding(horizontal = u(28f), vertical = u(8f))
+    ) {
+        LyricsView(lyrics = lyrics, progress = progress, textSize = u.sp(30f), lineSpacing = u(8f), modifier = Modifier.fillMaxSize())
+    }
+}
+
+/** What plays next; a tap jumps there. */
+@Composable
+private fun QueuePanel(u: Scale, queue: List<TrackDetailsDto>, onPick: (String) -> Unit, onClose: () -> Unit, modifier: Modifier) {
+    val context = LocalContext.current
+    PanelCard(u, stringResource(R.string.car_queue), onClose, modifier) {
+        if (queue.isEmpty()) {
+            Text(stringResource(R.string.car_queue_empty), color = Flat.TextDim, fontSize = u.sp(18f))
+        } else {
+            LazyColumn(Modifier.fillMaxSize()) {
+                // No keys: a queue may hold the same track twice
+                items(queue) { track ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(u(18f)))
+                            .clickable(role = Role.Button, onClick = { onPick(track.idString) })
+                            .padding(vertical = u(8f), horizontal = u(6f)),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(context).data(track.coverUri.toCoverUrl("200x200")).size(200).build(),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.size(u(64f)).clip(RoundedCornerShape(u(14f))).background(Flat.SurfaceHigh)
+                        )
+                        Spacer(Modifier.width(u(16f)))
+                        Column(Modifier.weight(1f)) {
+                            Text(track.title.orEmpty(), color = Color.White, fontSize = u.sp(21f), fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(track.artists.joinToString { it.name ?: "" }, color = Flat.TextDim, fontSize = u.sp(16f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * "Мне нравится" and the user's playlists (own and liked) as big cover tiles. A tap starts the playlist
+ * (shuffle mode applies); the tile shows a spinner while its tracks load.
  */
 @Composable
 private fun PlaylistsPanel(
@@ -600,100 +738,39 @@ private fun PlaylistsPanel(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val shape = RoundedCornerShape(u(30f))
-    Column(
-        modifier
-            .hifiGlass(shape, fill = Color(0xB3080A12), border = Color.White.copy(alpha = 0.12f))
-            .padding(u(20f))
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                stringResource(R.string.car_playlists_title),
-                color = Color.White,
-                fontSize = u.sp(26f),
-                fontWeight = FontWeight.ExtraBold,
-                modifier = Modifier.weight(1f)
-            )
-            GlassRound(u(56f), stringResource(R.string.car_playlists_close), onClose) {
-                Icon(Icons.Rounded.Close, contentDescription = null, tint = Color.White, modifier = Modifier.size(u(28f)))
-            }
-        }
-        Spacer(Modifier.height(u(16f)))
-        run {
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(u(150f)),
-                horizontalArrangement = Arrangement.spacedBy(u(16f)),
-                verticalArrangement = Arrangement.spacedBy(u(18f)),
-                modifier = Modifier.fillMaxSize()
-            ) {
-                // "Мне нравится" first, like in Yandex Music
-                item(key = "liked") {
-                    val tileShape = RoundedCornerShape(u(20f))
-                    Column(Modifier.clickable(role = Role.Button, onClick = onPickLiked)) {
-                        Box(
-                            Modifier
-                                .fillMaxWidth()
-                                .aspectRatio(1f)
-                                .clip(tileShape)
-                                .background(Brush.linearGradient(listOf(Color(0xFFFF4D6D), Color(0xFF7B2CBF)))),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(Icons.Rounded.Favorite, contentDescription = null, tint = Color.White, modifier = Modifier.size(u(64f)))
-                        }
-                        Text(
-                            stringResource(R.string.car_liked_tile),
-                            color = Color.White,
-                            fontSize = u.sp(18f),
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 2,
-                            modifier = Modifier.padding(top = u(8f))
-                        )
-                        Text(tracksLabel(likedCount), color = Color.White.copy(alpha = 0.60f), fontSize = u.sp(14f), maxLines = 1)
+    PanelCard(u, stringResource(R.string.car_playlists_title), onClose, modifier) {
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(u(150f)),
+            horizontalArrangement = Arrangement.spacedBy(u(16f)),
+            verticalArrangement = Arrangement.spacedBy(u(18f)),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            item(key = "liked") {
+                PlaylistTile(u, stringResource(R.string.car_liked_tile), tracksLabel(likedCount), onPickLiked) {
+                    Box(Modifier.fillMaxSize().background(Color(0xFFE5486A)), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Rounded.Favorite, contentDescription = null, tint = Color.White, modifier = Modifier.size(u(64f)))
                     }
                 }
-                items(playlists, key = { it.key }) { playlist ->
-                    val tileShape = RoundedCornerShape(u(20f))
-                    Column(Modifier.clickable(role = Role.Button, onClick = { onPick(playlist) })) {
-                        Box(
-                            Modifier
-                                .fillMaxWidth()
-                                .aspectRatio(1f)
-                                .clip(tileShape)
-                                .background(Brush.linearGradient(listOf(Color(0xFF2A3042), Color(0xFF151821)))),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            val cover = playlist.coverUri.toCoverUrl("300x300")
-                            if (cover != null) {
-                                AsyncImage(
-                                    model = ImageRequest.Builder(context).data(cover).size(300).build(),
-                                    contentDescription = null,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            } else {
-                                Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = null, tint = Color.White.copy(alpha = 0.6f), modifier = Modifier.size(u(56f)))
-                            }
-                            if (startingKind == playlist.key) {
-                                Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)), contentAlignment = Alignment.Center) {
-                                    androidx.compose.material3.CircularProgressIndicator(color = Color.White, strokeWidth = u(4f), modifier = Modifier.size(u(48f)))
-                                }
-                            }
+            }
+            items(playlists, key = { it.key }) { playlist ->
+                PlaylistTile(u, playlist.title.orEmpty(), tracksLabel(playlist.trackCount), { onPick(playlist) }) {
+                    val cover = playlist.coverUri.toCoverUrl("300x300")
+                    if (cover != null) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(context).data(cover).size(300).build(),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = null, tint = Flat.TextDim, modifier = Modifier.size(u(56f)))
                         }
-                        Text(
-                            playlist.title.orEmpty(),
-                            color = Color.White,
-                            fontSize = u.sp(18f),
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(top = u(8f))
-                        )
-                        Text(
-                            tracksLabel(playlist.trackCount),
-                            color = Color.White.copy(alpha = 0.60f),
-                            fontSize = u.sp(14f),
-                            maxLines = 1
-                        )
+                    }
+                    if (startingKind == playlist.key) {
+                        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = Color.White, strokeWidth = u(4f), modifier = Modifier.size(u(48f)))
+                        }
                     }
                 }
             }
@@ -701,150 +778,17 @@ private fun PlaylistsPanel(
     }
 }
 
-/** "1 трек", "3 трека", "25 треков". Pure; unit-tested. */
-fun tracksLabel(count: Int): String {
-    val mod100 = count % 100
-    val mod10 = count % 10
-    val word = when {
-        mod100 in 11..14 -> "треков"
-        mod10 == 1 -> "трек"
-        mod10 in 2..4 -> "трека"
-        else -> "треков"
-    }
-    return "$count $word"
-}
-
 @Composable
-private fun GlassRound(size: Dp, description: String, onClick: () -> Unit, content: @Composable () -> Unit) {
-    Box(
-        Modifier
-            .size(size)
-            .hifiGlass(CircleShape, fill = Color.White.copy(alpha = 0.06f), border = Color.White.copy(alpha = 0.14f))
-            .clickable(role = Role.Button, onClickLabel = description, onClick = onClick)
-            .semantics { contentDescription = description },
-        contentAlignment = Alignment.Center
-    ) { content() }
-}
-
-/** Big icon tiles of the sources; the playing one is dark metal with a steel rim. */
-@Composable
-private fun Dock(u: Scale, items: List<DockItem>, active: CarSource?, compact: Boolean) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(u(12f))) {
-        items.forEach { item ->
-            val selected = item.source == active
-            val shape = RoundedCornerShape(u(22f))
-            Column(
-                Modifier
-                    .weight(1f)
-                    .height(u(if (compact) 88f else 96f))
-                    .then(
-                        if (selected) Modifier.shadow(u(14f), shape).hifiAnodized(shape)
-                        else Modifier.hifiGlass(shape, fill = Color.White.copy(alpha = 0.06f), border = Color.White.copy(alpha = 0.10f))
-                    )
-                    .clickable(role = Role.Button, onClickLabel = item.label, onClick = item.onClick)
-                    .semantics { contentDescription = item.label },
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                // Icons only: big and obvious at a glance; the label stays for accessibility
-                Icon(item.icon, contentDescription = null, tint = if (selected) Color.White else Color.White.copy(alpha = 0.86f), modifier = Modifier.size(u(44f)))
-            }
-        }
-    }
-}
-
-/** The cover with a gloss and a coloured shadow; the next track sits on a glass plate over its lower edge. */
-@Composable
-private fun CoverWithNext(u: Scale, track: TrackDetailsDto?, next: TrackDetailsDto?, modifier: Modifier) {
-    val context = LocalContext.current
-    val tint: ArtworkTint = LocalArtworkTint.current
-    val shape = RoundedCornerShape(u(30f))
-    Box(
-        modifier
-            .aspectRatio(1f)
-            .shadow(u(44f), shape, ambientColor = tint.primary, spotColor = tint.primary)
-            .clip(shape)
-            .background(Brush.linearGradient(listOf(tint.primary, tint.secondary)))
-    ) {
-        AnimatedContent(
-            targetState = track?.coverUri,
-            transitionSpec = { fadeIn(HiFiMotion.large()) togetherWith fadeOut(HiFiMotion.large()) },
-            label = "car_cover"
-        ) { uri ->
-            AsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(uri.toCoverUrl("800x800"))
-                    .size(800)
-                    .crossfade(true)
-                    .apply { if (track?.isRadio == true) browserUserAgent() }
-                    .build(),
-                contentDescription = track?.title,
-                contentScale = if (track?.isRadio == true) ContentScale.Fit else ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .then(if (track?.isRadio == true) Modifier.background(Color.White).padding(u(60f)) else Modifier)
-            )
-        }
-        // Gloss
+private fun PlaylistTile(u: Scale, title: String, subtitle: String, onClick: () -> Unit, cover: @Composable () -> Unit) {
+    Column(Modifier.clickable(role = Role.Button, onClick = onClick)) {
         Box(
             Modifier
-                .fillMaxSize()
-                .drawWithCache {
-                    val gloss = Brush.linearGradient(listOf(Color.White.copy(alpha = 0.18f), Color.Transparent), start = Offset.Zero, end = Offset(size.width * 0.55f, size.height * 0.55f))
-                    val foot = Brush.verticalGradient(0.6f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.35f))
-                    onDrawBehind {
-                        drawRect(gloss)
-                        drawRect(foot)
-                    }
-                }
-        )
-        AnimatedVisibility(
-            visible = next != null,
-            enter = fadeIn(HiFiMotion.large()),
-            exit = fadeOut(HiFiMotion.quick()),
-            modifier = Modifier.align(Alignment.BottomCenter)
-        ) {
-            if (next != null) NextPlate(u, next)
-        }
-    }
-}
-
-@Composable
-private fun NextPlate(u: Scale, next: TrackDetailsDto) {
-    val context = LocalContext.current
-    val shape = RoundedCornerShape(u(22f))
-    AnimatedContent(
-        targetState = next,
-        contentKey = { it.idString },
-        transitionSpec = { fadeIn(HiFiMotion.large()) togetherWith fadeOut(HiFiMotion.quick()) },
-        label = "car_next"
-    ) { shown ->
-        Row(
-            Modifier
-                .padding(u(14f))
                 .fillMaxWidth()
-                .height(u(84f))
-                .hifiGlass(shape, fill = Color(0x8C080A14), border = Color.White.copy(alpha = 0.16f))
-                .hifiGrain(enabled = !LocalHiFiLite.current, alpha = 0.25f)
-                .padding(start = u(12f), end = u(20f)),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            AsyncImage(
-                model = ImageRequest.Builder(context).data(shown.coverUri.toCoverUrl("200x200")).size(200).crossfade(true).build(),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(u(60f))
-                    .shadow(u(8f), RoundedCornerShape(u(13f)))
-                    .clip(RoundedCornerShape(u(13f)))
-                    .background(Color(0xFF1C1F28))
-            )
-            Spacer(Modifier.width(u(14f)))
-            Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.car_next), color = Color.White.copy(alpha = 0.72f), fontSize = u.sp(11f), fontWeight = FontWeight.ExtraBold, letterSpacing = 0.18.em)
-                Text(shown.title ?: "", color = Color.White, fontSize = u.sp(21f), lineHeight = u.sp(26f), fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(shown.artists.joinToString { it.name ?: "" }, color = Color.White.copy(alpha = 0.72f), fontSize = u.sp(16f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-        }
+                .aspectRatio(1f)
+                .clip(RoundedCornerShape(u(20f)))
+                .background(Flat.SurfaceHigh)
+        ) { cover() }
+        Text(title, color = Color.White, fontSize = u.sp(18f), fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = u(8f)))
+        Text(subtitle, color = Flat.TextDim, fontSize = u.sp(14f), maxLines = 1)
     }
 }

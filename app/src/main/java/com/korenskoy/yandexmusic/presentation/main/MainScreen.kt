@@ -114,6 +114,7 @@ fun MainScreen(
     val openedPlaylist by playlistsVm.opened.collectAsState()
     val startingPlaylistKind by playlistsVm.starting.collectAsState()
     val shuffleEnabled by viewModel.shuffleEnabled.collectAsState()
+    val repeatOne by viewModel.repeatOne.collectAsState()
     val lyricsState by lyricsVm.state.collectAsState()
     val showLyrics by lyricsVm.showLyrics.collectAsState()
     val steeringWheelOnLeft by viewModel.steeringWheelOnLeft.collectAsState()
@@ -386,7 +387,14 @@ fun MainScreen(
                             onToggleShuffle = { viewModel.toggleShuffle() },
                             lyrics = lyricsState.lyrics?.takeIf { lyricsState.trackId == currentTrack?.idString },
                             showLyrics = showLyrics,
-                            onToggleLyrics = { lyricsVm.toggleShowLyrics() }
+                            onToggleLyrics = { lyricsVm.toggleShowLyrics() },
+                            repeatOne = repeatOne,
+                            onToggleRepeat = { viewModel.toggleRepeatOne() },
+                            queue = remember(currentPlaylist, currentTrackId) {
+                                val index = currentPlaylist.indexOfFirst { it.idString == currentTrackId }
+                                if (index < 0) emptyList() else currentPlaylist.drop(index + 1).take(50)
+                            },
+                            onQueueTrackClick = { viewModel.playTrack(it, currentPlaylist) }
                         )
                     }
                 }

@@ -4,6 +4,10 @@ name: Build APK
 # A push to main also publishes it as a GitHub Release, which the in-app updater picks up.
 on:
   push:
+    # Description-only changes don't need a new build (or a new release)
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
   workflow_dispatch:
 
 permissions:
