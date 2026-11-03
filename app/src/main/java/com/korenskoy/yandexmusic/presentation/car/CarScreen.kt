@@ -416,8 +416,10 @@ private fun DriverPanel(
             FlatRound(u(92f), stringResource(R.string.cd_ne_nravitsya), onClick = onDislike) {
                 Icon(Icons.Rounded.HeartBroken, contentDescription = null, tint = Color.White, modifier = Modifier.size(u(40f)))
             }
+            // Weighted, so the buttons are measured first and keep their full round size
             Box(
                 Modifier
+                    .weight(1f, fill = false)
                     .padding(horizontal = u(20f))
                     .fillMaxHeight()
                     .aspectRatio(1f, matchHeightConstraintsFirst = true)
