@@ -181,8 +181,8 @@ class WidgetSkipReceiver : android.content.BroadcastReceiver() {
     }
 
     companion object {
-        const val ACTION_NEXT = "YandexMusicLite.widget.NEXT"
-        const val ACTION_PREVIOUS = "YandexMusicLite.widget.PREVIOUS"
+        const val ACTION_NEXT = "YandexMusicLite.OzoBro.widget.NEXT"
+        const val ACTION_PREVIOUS = "YandexMusicLite.OzoBro.widget.PREVIOUS"
     }
 }
 

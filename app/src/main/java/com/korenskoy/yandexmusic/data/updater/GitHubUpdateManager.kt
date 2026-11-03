@@ -56,8 +56,8 @@ class GitHubUpdateManager @Inject constructor(
     private val json = Json { ignoreUnknownKeys = true; coerceInputValues = true }
 
     // GitHub repository endpoint
-    private val repoOwner = "KorenskoyR"
-    private val repoName = "YandexMusicLite"
+    private val repoOwner = "Ozo-bro"
+    private val repoName = "YML"
     private val releasesApiUrl = "https://api.github.com/repos/$repoOwner/$repoName/releases/latest"
 
     /**

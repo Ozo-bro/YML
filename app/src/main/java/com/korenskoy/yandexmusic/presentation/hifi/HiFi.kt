@@ -14,10 +14,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.compositionLocalOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 
 /**
  * The "Hi-Fi" design language of redesign 2.0: a dark ground, metal controls, one blue accent and a
@@ -90,11 +88,12 @@ object HiFiLitePolicy {
 /** True on weak devices, in battery saver and with "remove animations": drop the expensive effects. */
 val LocalHiFiLite = staticCompositionLocalOf { false }
 
+/**
+ * This build targets weak car head units: always light. [HiFiLitePolicy] is kept for its tests
+ * and in case automatic detection is wanted back.
+ */
 @Composable
-fun rememberHiFiLite(): Boolean {
-    val context = LocalContext.current
-    return remember { HiFiLitePolicy.fromContext(context) }
-}
+fun rememberHiFiLite(): Boolean = true
 
 /** The app-wide tint taken from the current cover (or the radio station's brand colors). */
 @Immutable

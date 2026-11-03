@@ -27,8 +27,6 @@ import com.korenskoy.yandexmusic.data.dto.ArtistBriefDto
 import com.korenskoy.yandexmusic.data.dto.ArtistDto
 import com.korenskoy.yandexmusic.data.dto.TrackDetailsDto
 import com.korenskoy.yandexmusic.data.dto.UserPlaylistDto
-import com.korenskoy.yandexmusic.data.repository.RadioRepository
-import com.korenskoy.yandexmusic.domain.model.RadioCategory
 import com.korenskoy.yandexmusic.presentation.car.CarScreen
 import com.korenskoy.yandexmusic.presentation.catalog.CatalogActions
 import com.korenskoy.yandexmusic.presentation.catalog.CatalogPage
@@ -49,7 +47,6 @@ import com.korenskoy.yandexmusic.presentation.main.components.TrackContextMenu
 import com.korenskoy.yandexmusic.presentation.main.components.TrackItem
 import com.korenskoy.yandexmusic.presentation.main.components.TrackMenuLauncher
 import com.korenskoy.yandexmusic.presentation.player.FullScreenPlayer
-import com.korenskoy.yandexmusic.presentation.radio.RadioScreen
 import com.korenskoy.yandexmusic.ui.theme.YandexMusicTheme
 import kotlinx.serialization.json.JsonPrimitive
 import coil3.ImageLoader
@@ -301,20 +298,6 @@ class ScreenshotTest {
         snap("full_player")
     }
 
-    /** Bundled station logos on their cards: the 1.4.x "empty square" regression shows up here. */
-    @Test
-    fun radioStations() {
-        val stations = RadioRepository(ApplicationProvider.getApplicationContext()).getBuiltinStations()
-        show {
-            RadioScreen(
-                stations = stations, allStations = stations, selectedCategory = RadioCategory.ALL,
-                onCategorySelect = {}, currentStationId = stations.first().id, isPlaying = true,
-                favoriteStationIds = setOf(stations[1].id, stations[2].id), onStationClick = {}, onToggleFavorite = {}, onPlayPause = {}
-            )
-        }
-        snap("radio")
-    }
-
     private val album = AlbumDto(
         id = JsonPrimitive(2), title = "Группа крови", year = 1988, trackCount = 3,
         artists = listOf(ArtistDto(id = JsonPrimitive(7), name = "Кино")), volumes = listOf(tracks)
@@ -424,7 +407,7 @@ class ScreenshotTest {
     private fun car(isLandscape: Boolean, steeringWheelOnLeft: Boolean = true) = CompositionLocalProvider(LocalCarClock provides { FIXED_TIME }) { CarScreen(
         currentTrack = tracks[0], isPlaying = true, likedTrackIds = setOf("1"), onPlayPauseClick = {}, onNextClick = {},
         onPrevClick = {}, onToggleLike = {}, onDislikeClick = {}, onPlayMyVibe = {}, onPlayFavorites = {}, onPlayHits = {},
-        onPlayDownloaded = {}, onPlayRadio = {}, onExit = {}, isLandscape = isLandscape, steeringWheelOnLeft = steeringWheelOnLeft, progress = { 82_000L }, durationMs = 286_000,
+        onPlayDownloaded = {}, onExit = {}, isLandscape = isLandscape, steeringWheelOnLeft = steeringWheelOnLeft, progress = { 82_000L }, durationMs = 286_000,
         nextTrack = tracks[2], source = com.korenskoy.yandexmusic.data.player.PlaylistSource.VIBE
     ) }
 

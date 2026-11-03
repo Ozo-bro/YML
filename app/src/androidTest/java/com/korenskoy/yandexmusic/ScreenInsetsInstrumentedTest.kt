@@ -12,13 +12,10 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.korenskoy.yandexmusic.data.dto.ArtistDto
 import com.korenskoy.yandexmusic.data.dto.TrackDetailsDto
-import com.korenskoy.yandexmusic.data.repository.RadioRepository
-import com.korenskoy.yandexmusic.domain.model.RadioCategory
 import com.korenskoy.yandexmusic.presentation.car.CarScreen
 import com.korenskoy.yandexmusic.presentation.main.HomeScreen
 import com.korenskoy.yandexmusic.presentation.main.LibraryScreen
 import com.korenskoy.yandexmusic.presentation.main.SearchScreen
-import com.korenskoy.yandexmusic.presentation.radio.RadioScreen
 import com.korenskoy.yandexmusic.ui.theme.YandexMusicTheme
 import kotlinx.serialization.json.JsonPrimitive
 import org.junit.Assert.assertTrue
@@ -112,25 +109,12 @@ class ScreenInsetsInstrumentedTest {
     }
 
     @Test
-    fun radio() {
-        val stations = RadioRepository(compose.activity.applicationContext).getBuiltinStations()
-        show {
-            RadioScreen(
-                stations = stations, allStations = stations, selectedCategory = RadioCategory.ALL,
-                onCategorySelect = {}, currentStationId = null, isPlaying = false, favoriteStationIds = emptySet(),
-                onStationClick = {}, onToggleFavorite = {}, onPlayPause = {}
-            )
-        }
-        assertBelowStatusBar("Radio")
-    }
-
-    @Test
     fun carStaysClearOfBothSystemBars() {
         show {
             CarScreen(
                 currentTrack = tracks[0], isPlaying = true, likedTrackIds = emptySet(), onPlayPauseClick = {}, onNextClick = {},
                 onPrevClick = {}, onToggleLike = {}, onDislikeClick = {}, onPlayMyVibe = {}, onPlayFavorites = {}, onPlayHits = {},
-                onPlayDownloaded = {}, onPlayRadio = {}, onExit = {}, progress = { 60_000L }, durationMs = 215_000
+                onPlayDownloaded = {}, onExit = {}, progress = { 60_000L }, durationMs = 215_000
             )
         }
         assertBelowStatusBar("Car")

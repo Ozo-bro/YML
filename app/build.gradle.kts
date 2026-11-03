@@ -34,11 +34,14 @@ android {
     }
 
     defaultConfig {
-        applicationId = "YandexMusicLite.KorenskoyR"
+        // Personal car build: its own id, so it installs next to the original app
+        applicationId = "YandexMusicLite.OzoBro"
         minSdk = 24
         targetSdk = 36
-        versionCode = 36
-        versionName = "1.8.0"
+        // CI passes the build number: every build is a newer version for the in-app updater
+        val buildNumber = System.getenv("YML_BUILD_NUMBER")?.toIntOrNull() ?: 0
+        versionCode = 1000 + buildNumber
+        versionName = "2.0.$buildNumber"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         
@@ -77,14 +80,9 @@ android {
 
     buildTypes {
         release {
-            // Only a requested release build needs the production keystore; tests and lint run without it (CI)
-            val releaseRequested = gradle.startParameter.taskNames.any {
-                it.contains("Release", ignoreCase = true) && !it.contains("UnitTest", ignoreCase = true)
-            }
-            if (!hasValidSigning && releaseRequested) {
-                throw GradleException("Cannot build release APK without production keystore! Missing valid release.keystore or signing credentials.")
-            }
-            signingConfig = if (hasValidSigning) signingConfigs.getByName("release") else null
+            // Personal build: without the personal keystore the optimized APK is signed with the debug key
+            // (installs fine, but a later build signed differently cannot update it in place)
+            signingConfig = if (hasValidSigning) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")

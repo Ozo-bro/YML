@@ -21,7 +21,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.DirectionsCar
 import androidx.compose.material.icons.rounded.LibraryMusic
-import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Waves
 import androidx.compose.material3.Icon
@@ -48,7 +47,6 @@ enum class MainTab(val title: String, val icon: ImageVector, val route: String) 
     HOME("Волна", Icons.Rounded.Waves, "home"),
     SEARCH("Поиск", Icons.Rounded.Search, "search"),
     LIBRARY("Музыка", Icons.Rounded.LibraryMusic, "library"),
-    RADIO("Радио", Icons.Rounded.Radio, "radio"),
     CAR("В авто", Icons.Rounded.DirectionsCar, "car")
 }
 

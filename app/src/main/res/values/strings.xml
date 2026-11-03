@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Yandex Music Lite</string>
+    <string name="app_name">YML Авто</string>
     <string name="account_management_upravlenie_akkauntami">Управление аккаунтами</string>
     <string name="account_management_pereklyuchenie_profiley_i_nastroyki">Переключение профилей и настройки входа</string>
     <string name="cd_zakryt">Закрыть</string>

@@ -50,13 +50,10 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
-import androidx.compose.ui.graphics.Color
-import com.korenskoy.yandexmusic.presentation.hifi.ArtworkTint
 import com.korenskoy.yandexmusic.presentation.hifi.HiFiBackdrop
 import com.korenskoy.yandexmusic.presentation.hifi.HiFiMotion
 import com.korenskoy.yandexmusic.presentation.hifi.LocalArtworkTint
 import com.korenskoy.yandexmusic.presentation.hifi.LocalHiFiLite
-import com.korenskoy.yandexmusic.presentation.hifi.TintMath
 import com.korenskoy.yandexmusic.presentation.hifi.rememberArtworkTint
 import com.korenskoy.yandexmusic.presentation.hifi.rememberHiFiLite
 import com.korenskoy.yandexmusic.utils.toCoverUrl
@@ -72,7 +69,6 @@ fun MainScreen(
     accountVm: com.korenskoy.yandexmusic.presentation.account.AccountViewModel = androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel(),
     searchVm: SearchViewModel = androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel(),
     playlistsVm: PlaylistsViewModel = androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel(),
-    radioVm: com.korenskoy.yandexmusic.presentation.radio.RadioViewModel = androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel(),
     updateVm: com.korenskoy.yandexmusic.presentation.update.UpdateViewModel = androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel(),
     catalogVm: com.korenskoy.yandexmusic.presentation.catalog.CatalogViewModel = androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel(),
     crashVm: com.korenskoy.yandexmusic.presentation.crash.CrashLogViewModel = androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel()
@@ -85,7 +81,6 @@ fun MainScreen(
     val autoDownloadEnabled by viewModel.autoDownloadEnabled.collectAsState()
     val likedTrackIds by viewModel.likedTrackIds.collectAsState()
     val downloadedTrackIds by viewModel.downloadedTrackIds.collectAsState()
-    val favoriteStationIds by radioVm.favoriteStationIds.collectAsState()
     
     val searchQuery by searchVm.query.collectAsState()
     val searchResults by searchVm.results.collectAsState()
@@ -186,17 +181,10 @@ fun MainScreen(
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-    // One tint for the whole app: the playing cover, or the station's brand colors on air
+    // One tint for the whole app: the playing cover
     val lite = rememberHiFiLite()
-    val radioStations by radioVm.stations.collectAsState()
-    val stationTint = remember(shownTrack?.idString, radioStations) {
-        if (shownTrack?.isRadio != true) null
-        else radioStations.firstOrNull { it.id == shownTrack.idString.removePrefix("radio_") }?.let {
-            ArtworkTint(Color(TintMath.normalize(it.brandColorStart.toInt())), Color(TintMath.normalize(it.brandColorEnd.toInt())))
-        }
-    }
     val coverForTint = if (shownTrack?.isRadio == true) null else shownTrack?.coverUri.toCoverUrl("200x200")
-    val appTint = rememberArtworkTint(coverForTint, stationTint)
+    val appTint = rememberArtworkTint(coverForTint)
     val waveActive = currentSource == PlaylistSource.VIBE && currentTrack != null
     val upcoming = remember(currentPlaylist, currentTrackId) {
         val index = currentPlaylist.indexOfFirst { it.idString == currentTrackId }
@@ -353,27 +341,6 @@ fun MainScreen(
                         onReorderPlaylist = { playlist, shown, new -> playlistsVm.reorder(playlist, shown, new) },
                         onSetPlaylistPublic = { playlist, public -> playlistsVm.setPublic(playlist, public) }
                     )
-                    MainTab.RADIO -> {
-                        var selectedCategory by rememberSaveable { mutableStateOf(com.korenskoy.yandexmusic.domain.model.RadioCategory.ALL) }
-                        val filteredStations = radioStations.filter {
-                            selectedCategory == com.korenskoy.yandexmusic.domain.model.RadioCategory.ALL ||
-                                (selectedCategory == com.korenskoy.yandexmusic.domain.model.RadioCategory.FAVORITES && favoriteStationIds.contains(it.id)) ||
-                                it.category == selectedCategory
-                        }
-                        com.korenskoy.yandexmusic.presentation.radio.RadioScreen(
-                            stations = filteredStations,
-                            allStations = radioStations,
-                            selectedCategory = selectedCategory,
-                            onCategorySelect = { selectedCategory = it },
-                            currentStationId = currentTrack?.takeIf { it.isRadio }?.idString?.removePrefix("radio_"),
-                            isPlaying = isPlaying,
-                            favoriteStationIds = favoriteStationIds,
-                            onStationClick = { radioVm.play(it) },
-                            onToggleFavorite = { radioVm.toggleFavorite(it) },
-                            onPlayPause = { viewModel.togglePlayPause() },
-                            hasActiveTrack = currentTrack != null
-                        )
-                    }
                     MainTab.CAR -> run {
                         CarScreen(
                             currentTrack = currentTrack,
@@ -384,20 +351,8 @@ fun MainScreen(
                             },
                             onNextClick = { viewModel.playNext() },
                             onPrevClick = { viewModel.playPrev() },
-                            onToggleLike = { track ->
-                                if (track.isRadio) {
-                                    radioVm.toggleFavorite(track.idString.removePrefix("radio_"))
-                                } else {
-                                    viewModel.toggleLike(track)
-                                }
-                            },
-                            onDislikeClick = { track ->
-                                if (track.isRadio) {
-                                    radioVm.removeFavorite(track.idString.removePrefix("radio_"))
-                                } else {
-                                    viewModel.dislikeTrack(track)
-                                }
-                            },
+                            onToggleLike = { track -> viewModel.toggleLike(track) },
+                            onDislikeClick = { track -> viewModel.dislikeTrack(track) },
                             onPlayMyVibe = { viewModel.playMyVibe() },
                             onPlayFavorites = { viewModel.playAllLikedTracks() },
                             onPlayHits = { viewModel.playHits(shuffle = true) },
@@ -405,12 +360,6 @@ fun MainScreen(
                                 val downloaded = tracks.filter { downloadedTrackIds.contains(it.idString) }
                                 if (downloaded.isNotEmpty()) {
                                     viewModel.playTrack(downloaded.first().idString, downloaded, PlaylistSource.LIBRARY)
-                                }
-                            },
-                            onPlayRadio = {
-                                val stations = radioVm.stations.value
-                                if (stations.isNotEmpty()) {
-                                    radioVm.play(stations.first())
                                 }
                             },
                             onExit = { currentTab = MainTab.HOME },
@@ -518,11 +467,7 @@ fun MainScreen(
                 modifier = Modifier.fillMaxSize()
             ) {
                 if (shownTrack != null) {
-                    val isPlayerLiked = if (currentTrack?.isRadio == true) {
-                        favoriteStationIds.contains(shownTrack.idString.removePrefix("radio_"))
-                    } else {
-                        likedTrackIds.contains(shownTrack.idString)
-                    }
+                    val isPlayerLiked = likedTrackIds.contains(shownTrack.idString)
                     WithProgress(progressState) { progress ->
                         FullScreenPlayer(
                             track = shownTrack,
@@ -533,13 +478,7 @@ fun MainScreen(
                             onPlayPauseClick = {
                                 viewModel.togglePlayPause()
                             },
-                            onToggleLike = {
-                                if (currentTrack?.isRadio == true) {
-                                    radioVm.toggleFavorite(shownTrack.idString.removePrefix("radio_"))
-                                } else {
-                                    viewModel.toggleLike(shownTrack)
-                                }
-                            },
+                            onToggleLike = { viewModel.toggleLike(shownTrack) },
                             onNextClick = { viewModel.playNext() },
                             onPrevClick = { viewModel.playPrev() },
                             onSeekTo = { position -> viewModel.seekTo(position) },
@@ -550,13 +489,7 @@ fun MainScreen(
                                 isPlayerExpanded = false
                                 viewModel.stopAndClearPlayer()
                             },
-                            onDislikeClick = {
-                                if (currentTrack?.isRadio == true) {
-                                    radioVm.removeFavorite(shownTrack.idString.removePrefix("radio_"))
-                                } else {
-                                    viewModel.dislikeTrack(shownTrack)
-                                }
-                            },
+                            onDislikeClick = { viewModel.dislikeTrack(shownTrack) },
                             onLoadMoreQueue = { viewModel.loadMoreQueue() },
                             isFetchingMoreQueue = isFetchingMoreQueue,
                             sleepTimer = sleepTimer,

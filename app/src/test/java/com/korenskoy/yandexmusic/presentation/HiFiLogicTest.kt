@@ -1,8 +1,6 @@
 package com.korenskoy.yandexmusic.presentation
 
 import com.korenskoy.yandexmusic.data.player.PlaylistSource
-import com.korenskoy.yandexmusic.domain.model.RadioCategory
-import com.korenskoy.yandexmusic.domain.model.RadioStation
 import com.korenskoy.yandexmusic.presentation.car.CarSource
 import com.korenskoy.yandexmusic.presentation.car.carSourceOf
 import com.korenskoy.yandexmusic.presentation.car.carTimeReadout
@@ -10,7 +8,6 @@ import com.korenskoy.yandexmusic.presentation.hifi.HiFiLitePolicy
 import com.korenskoy.yandexmusic.presentation.hifi.RingMode
 import com.korenskoy.yandexmusic.presentation.hifi.SpectrumMath
 import com.korenskoy.yandexmusic.presentation.hifi.TintMath
-import com.korenskoy.yandexmusic.presentation.radio.RadioDial
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -114,35 +111,6 @@ class HiFiLogicTest {
         assertTrue("starts at the top", SpectrumMath.isPlayed(0, 72, 0.01f))
     }
 
-    // --- FM dial ---------------------------------------------------------------------------------
-
-    private fun station(id: String, freq: String) = RadioStation(id, id, freq, "", "", RadioCategory.ALL)
-
-    @Test
-    fun parsesFrequencies() {
-        assertEquals(106.2f, RadioDial.parseMhz("106.2 FM")!!, 0.001f)
-        assertEquals(91.4f, RadioDial.parseMhz("91,4")!!, 0.001f)
-        assertNull("online only", RadioDial.parseMhz("Online"))
-        assertNull("outside the FM band", RadioDial.parseMhz("120.5"))
-    }
-
-    @Test
-    fun dialFractionCoversTheBand() {
-        assertEquals(0f, RadioDial.fraction(88f), 0.0001f)
-        assertEquals(0.5f, RadioDial.fraction(98f), 0.0001f)
-        assertEquals(1f, RadioDial.fraction(108f), 0.0001f)
-        assertEquals(1f, RadioDial.fraction(200f), 0.0001f)
-    }
-
-    @Test
-    fun releasingTheNeedleTunesTheNearestStation() {
-        val list = listOf(station("a", "89.1"), station("b", "98.0"), station("web", "Online"), station("c", "107.0"))
-        assertEquals("a", RadioDial.nearest(list, 0f)?.id)
-        assertEquals("b", RadioDial.nearest(list, 0.52f)?.id)
-        assertEquals("c", RadioDial.nearest(list, 1f)?.id)
-        assertNull(RadioDial.nearest(listOf(station("web", "Online")), 0.5f))
-    }
-
     // --- Car -------------------------------------------------------------------------------------
 
     @Test
@@ -150,8 +118,7 @@ class HiFiLogicTest {
         assertEquals(CarSource.WAVE, carSourceOf(PlaylistSource.VIBE, isRadio = false))
         assertEquals(CarSource.LIKED, carSourceOf(PlaylistSource.LIBRARY, false))
         assertEquals(CarSource.HITS, carSourceOf(PlaylistSource.TRENDS, false))
-        assertEquals(CarSource.RADIO, carSourceOf(PlaylistSource.RADIO, false))
-        assertEquals("a radio stream wins over the queue source", CarSource.RADIO, carSourceOf(PlaylistSource.VIBE, true))
+        assertEquals("a radio stream lights no tile", null, carSourceOf(PlaylistSource.VIBE, true))
         assertNull(carSourceOf(PlaylistSource.SEARCH, false))
         assertNull(carSourceOf(PlaylistSource.NONE, false))
     }

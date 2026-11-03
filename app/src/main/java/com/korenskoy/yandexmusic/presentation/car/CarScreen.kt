@@ -33,7 +33,6 @@ import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.HeartBroken
-import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material.icons.automirrored.rounded.TrendingUp
@@ -102,11 +101,11 @@ import java.util.Locale
 val LocalCarClock = androidx.compose.runtime.staticCompositionLocalOf<() -> Long> { System::currentTimeMillis }
 
 /** The source tiles of the dock, in order. */
-enum class CarSource { WAVE, LIKED, RADIO, HITS, DOWNLOADED }
+enum class CarSource { WAVE, LIKED, HITS, DOWNLOADED }
 
 /** Which dock tile is lit for the playing [source]. Pure; unit-tested. */
 fun carSourceOf(source: PlaylistSource, isRadio: Boolean): CarSource? = when {
-    isRadio || source == PlaylistSource.RADIO -> CarSource.RADIO
+    isRadio -> null
     source == PlaylistSource.VIBE -> CarSource.WAVE
     source == PlaylistSource.LIBRARY -> CarSource.LIKED
     source == PlaylistSource.TRENDS -> CarSource.HITS
@@ -147,7 +146,6 @@ fun CarScreen(
     onPlayFavorites: () -> Unit,
     onPlayHits: () -> Unit,
     onPlayDownloaded: () -> Unit,
-    onPlayRadio: () -> Unit,
     onExit: () -> Unit,
     isLandscape: Boolean = false,
     steeringWheelOnLeft: Boolean = true,
@@ -175,7 +173,6 @@ fun CarScreen(
     val sourceLabel = when (active) {
         CarSource.WAVE -> stringResource(R.string.car_source_wave)
         CarSource.LIKED -> stringResource(R.string.library_liked)
-        CarSource.RADIO -> stringResource(R.string.car_source_radio)
         CarSource.HITS -> stringResource(R.string.car_source_hits)
         else -> ""
     }
@@ -190,7 +187,6 @@ fun CarScreen(
     val sources = listOf(
         DockItem(CarSource.WAVE, Icons.Rounded.Waves, stringResource(R.string.car_source_wave), onPlayMyVibe),
         DockItem(CarSource.LIKED, Icons.Rounded.Favorite, stringResource(R.string.car_source_liked), onPlayFavorites),
-        DockItem(CarSource.RADIO, Icons.Rounded.Radio, stringResource(R.string.car_source_radio), onPlayRadio),
         DockItem(CarSource.HITS, Icons.AutoMirrored.Rounded.TrendingUp, stringResource(R.string.car_source_hits), onPlayHits),
         DockItem(CarSource.DOWNLOADED, Icons.Rounded.DownloadDone, stringResource(R.string.car_source_downloaded), onPlayDownloaded)
     )
