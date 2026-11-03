@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -164,6 +163,13 @@ fun UpdateDialog(
 
                 Spacer(modifier = Modifier.height(18.dp))
 
+                // Everything between the header and the buttons scrolls: on a short screen (a head unit in
+                // split mode, a large UI scale) the buttons used to end up below the edge, out of reach
+                Column(
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .verticalScroll(rememberScrollState())
+                ) {
                 // Changelog Card
                 Text(
                     text = stringResource(R.string.update_chto_novogo_v_etoy),
@@ -176,7 +182,6 @@ fun UpdateDialog(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 180.dp)
                         .clip(RoundedCornerShape(16.dp))
                         .background(Color.White.copy(alpha = 0.04f))
                         .border(
@@ -184,7 +189,6 @@ fun UpdateDialog(
                             RoundedCornerShape(16.dp)
                         )
                         .padding(14.dp)
-                        .verticalScroll(rememberScrollState())
                 ) {
                     Text(
                         text = updateInfo.changelog,
@@ -201,6 +205,31 @@ fun UpdateDialog(
                         text = "Размер файла: ~$sizeMb МБ",
                         color = Color.White.copy(alpha = 0.45f),
                         fontSize = 11.sp
+                    )
+                }
+
+                // Fallback: the same APK through the browser (or the system downloader)
+                val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable { runCatching { uriHandler.openUri(updateInfo.apkDownloadUrl) } }
+                        .padding(vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Download,
+                        contentDescription = null,
+                        tint = Color(0xFF6FA8FF),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Скачать APK через браузер",
+                        color = Color(0xFF6FA8FF),
+                        fontSize = 12.5.sp,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
 
@@ -312,9 +341,11 @@ fun UpdateDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(22.dp))
+                }
 
-                // Actions row
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Actions row: always visible under the scrolling part
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End,
