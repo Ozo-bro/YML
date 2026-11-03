@@ -108,6 +108,8 @@ fun MainScreen(
     val sleepTimer by viewModel.sleepTimer.collectAsState()
     val userPlaylists by playlistsVm.playlists.collectAsState()
     val openedPlaylist by playlistsVm.opened.collectAsState()
+    val startingPlaylistKind by playlistsVm.starting.collectAsState()
+    val shuffleEnabled by viewModel.shuffleEnabled.collectAsState()
     val steeringWheelOnLeft by viewModel.steeringWheelOnLeft.collectAsState()
     val uiScaleAuto by viewModel.uiScaleAuto.collectAsState()
     val uiScaleManual by viewModel.uiScaleManual.collectAsState()
@@ -370,7 +372,13 @@ fun MainScreen(
                             onSeek = { viewModel.seekTo(it) },
                             nextTrack = if (currentTrack?.isRadio == true) null else upcoming.firstOrNull(),
                             source = currentSource,
-                            isBuffering = isBuffering
+                            isBuffering = isBuffering,
+                            playlists = userPlaylists,
+                            startingPlaylistKind = startingPlaylistKind,
+                            onPlayPlaylist = { playlistsVm.playPlaylist(it) },
+                            onOpenPlaylists = { playlistsVm.refresh() },
+                            shuffleEnabled = shuffleEnabled,
+                            onToggleShuffle = { viewModel.toggleShuffle() }
                         )
                     }
                 }
@@ -491,6 +499,9 @@ fun MainScreen(
                             },
                             onDislikeClick = { viewModel.dislikeTrack(shownTrack) },
                             onLoadMoreQueue = { viewModel.loadMoreQueue() },
+                            showShuffle = !shownTrack.isRadio && com.korenskoy.yandexmusic.data.player.PlaybackQueue.shuffleApplies(currentSource),
+                            shuffleEnabled = shuffleEnabled,
+                            onToggleShuffle = { viewModel.toggleShuffle() },
                             isFetchingMoreQueue = isFetchingMoreQueue,
                             sleepTimer = sleepTimer,
                             onSleepTimer = { viewModel.setSleepTimer(it) },

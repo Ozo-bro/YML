@@ -53,6 +53,15 @@ class SettingsRepositoryImpl @Inject constructor(
         context.dataStore.edit { prefs -> prefs[STEERING_WHEEL_ON_LEFT_KEY] = onLeft }
     }
 
+    private val SHUFFLE_ENABLED_KEY = booleanPreferencesKey("shuffle_enabled")
+    override val shuffleEnabled: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[SHUFFLE_ENABLED_KEY] ?: false
+    }
+
+    override suspend fun setShuffleEnabled(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[SHUFFLE_ENABLED_KEY] = enabled }
+    }
+
     private val UI_SCALE_AUTO_KEY = booleanPreferencesKey("ui_scale_auto")
     override val uiScaleAuto: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[UI_SCALE_AUTO_KEY] ?: SettingsRepository.DEFAULT_UI_SCALE_AUTO

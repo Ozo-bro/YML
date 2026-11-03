@@ -18,6 +18,8 @@ interface SettingsRepository {
     val uiScaleAuto: Flow<Boolean>
     /** Manual UI-scale multiplier used when [uiScaleAuto] is off ([MIN_UI_SCALE]…[MAX_UI_SCALE]). */
     val uiScaleManual: Flow<Float>
+    /** Shuffle mode for regular queues (playlists, liked, downloaded); My Wave ignores it. */
+    val shuffleEnabled: Flow<Boolean>
 
     suspend fun setDarkTheme(enabled: Boolean)
     suspend fun setAutoDownloadLikedTracks(enabled: Boolean)
@@ -27,6 +29,7 @@ interface SettingsRepository {
     suspend fun setSteeringWheelOnLeft(onLeft: Boolean)
     suspend fun setUiScaleAuto(enabled: Boolean)
     suspend fun setUiScaleManual(scale: Float)
+    suspend fun setShuffleEnabled(enabled: Boolean)
 
     companion object {
         const val DEFAULT_CROSSFADE_SECONDS = 3

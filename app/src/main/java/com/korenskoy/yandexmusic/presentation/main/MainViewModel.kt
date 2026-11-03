@@ -75,6 +75,7 @@ class MainViewModel @Inject constructor(
     // region Playback state
 
     val currentSource: StateFlow<PlaylistSource> = playbackController.currentSource
+    val shuffleEnabled: StateFlow<Boolean> = playbackController.shuffleEnabled
     val currentPlaylist: StateFlow<List<TrackDetailsDto>> = playbackController.currentPlaylist
     val currentTrack: StateFlow<TrackDetailsDto?> = playbackController.currentTrack
     val currentTrackId: StateFlow<String?> = playbackController.currentTrack
@@ -192,6 +193,7 @@ class MainViewModel @Inject constructor(
     fun playAllLikedTracks() = playbackController.playAllLikedTracks()
 
     fun shuffleLikedTracks() = playbackController.playAllLikedTracks(shuffle = true)
+    fun toggleShuffle() = playbackController.toggleShuffle()
 
     fun playHits(shuffle: Boolean = true) = playbackController.playHits(libraryRepository.weeklyHits.value, shuffle)
 

@@ -63,4 +63,36 @@ class PlaybackQueueTest {
         assertEquals(listOf(0, 1, 2), PlaybackQueue.snapshotWindow(listOf(0, 1, 2), 1))
         assertEquals(0, PlaybackQueue.snapshotWindow(queue, 0).first())
     }
+
+    @Test
+    fun shuffleKeepsTheCurrentTrackFirstAndEveryTrackOnce() {
+        val queue = (0 until 50).toList()
+        val shuffled = PlaybackQueue.shuffledAround(queue, 7, kotlin.random.Random(42))
+        assertEquals(7, shuffled.first())
+        assertEquals(queue.toSet(), shuffled.toSet())
+        assertEquals(queue.size, shuffled.size)
+        assertEquals("a 50-track queue is actually mixed", false, shuffled.drop(1) == queue.filter { it != 7 })
+    }
+
+    @Test
+    fun shuffleOffRestoresTheOriginalOrder() {
+        val original = listOf("a", "b", "c", "d", "e")
+        val shuffled = listOf("c", "e", "a", "x", "b") // "d" removed, "x" added meanwhile
+        assertEquals(listOf("a", "b", "c", "e", "x"), PlaybackQueue.restoreOrder(original, shuffled) { it })
+    }
+
+    @Test
+    fun sameQueueMeansSameTracksInTheSameOrder() {
+        assertEquals(true, PlaybackQueue.isSameQueue(listOf(1, 2, 3), listOf(1, 2, 3)) { it })
+        assertEquals(false, PlaybackQueue.isSameQueue(listOf(1, 2, 3), listOf(3, 2, 1)) { it })
+        assertEquals(false, PlaybackQueue.isSameQueue(listOf(1, 2), listOf(1, 2, 3)) { it })
+    }
+
+    @Test
+    fun shuffleSkipsTheWaveAndRadio() {
+        assertEquals(false, PlaybackQueue.shuffleApplies(PlaylistSource.VIBE))
+        assertEquals(false, PlaybackQueue.shuffleApplies(PlaylistSource.RADIO))
+        assertEquals(true, PlaybackQueue.shuffleApplies(PlaylistSource.PLAYLIST))
+        assertEquals(true, PlaybackQueue.shuffleApplies(PlaylistSource.LIBRARY))
+    }
 }

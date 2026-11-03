@@ -223,6 +223,13 @@
     <string name="car_source_liked">Любимое</string>
     <string name="car_source_radio">Радио</string>
     <string name="car_source_hits">Хиты</string>
+    <string name="car_source_playlists">Плейлисты</string>
+    <string name="car_playlists_title">Мои плейлисты</string>
+    <string name="car_playlists_empty">Плейлистов пока нет. Создайте их в разделе «Музыка» или в Яндекс Музыке.</string>
+    <string name="car_playlist_empty">Плейлист «%1$s» пуст</string>
+    <string name="car_playlists_close">Закрыть плейлисты</string>
+    <string name="car_shuffle_on">Перемешивание включено</string>
+    <string name="car_shuffle_off">Перемешивание выключено</string>
     <string name="car_source_downloaded">Скачанные</string>
     <string name="car_exit">Выйти из режима В авто</string>
     <string name="car_time_elapsed_remaining">Прошло %1$s, осталось %2$s</string>

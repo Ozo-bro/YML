@@ -4,6 +4,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.Shuffle
 import com.korenskoy.yandexmusic.R
 import androidx.compose.ui.res.stringResource
 import androidx.compose.animation.AnimatedVisibility
@@ -136,7 +137,10 @@ fun FullScreenPlayer(
     onCancelSleepTimer: () -> Unit = {},
     onAddToPlaylist: () -> Unit = {},
     onQualityClick: () -> Unit = {},
-    coverModifier: Modifier = Modifier
+    coverModifier: Modifier = Modifier,
+    showShuffle: Boolean = false,
+    shuffleEnabled: Boolean = false,
+    onToggleShuffle: () -> Unit = {}
 ) {
     androidx.activity.compose.BackHandler(onBack = onCollapse)
 
@@ -271,6 +275,7 @@ fun FullScreenPlayer(
                     }
                     // Keeps the title centred against the timer and queue buttons on the right
                     if (!track.isRadio) Spacer(modifier = Modifier.width(48.dp))
+                    if (showShuffle) Spacer(modifier = Modifier.width(48.dp))
                 }
                 Text(
                     text = stringResource(R.string.full_player_seychas_igraet),
@@ -284,6 +289,25 @@ fun FullScreenPlayer(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    if (showShuffle) {
+                        val shuffleLabel = stringResource(if (shuffleEnabled) R.string.car_shuffle_on else R.string.car_shuffle_off)
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(if (shuffleEnabled) Color(0x550A6CFF) else Color(0x352A2A38))
+                                .border(BorderStroke(1.dp, if (shuffleEnabled) Color(0xFF0A6CFF) else Color(0x40FFFFFF)), CircleShape)
+                                .clickable(onClickLabel = shuffleLabel) { onToggleShuffle() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Shuffle,
+                                contentDescription = shuffleLabel,
+                                tint = if (shuffleEnabled) Color.White else Color.White.copy(alpha = 0.7f),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
                     SleepTimerButton(
                         state = sleepTimer,
                         onMinutes = onSleepTimer,

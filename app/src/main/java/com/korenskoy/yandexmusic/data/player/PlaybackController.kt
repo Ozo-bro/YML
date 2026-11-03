@@ -76,6 +76,12 @@ class PlaybackController @Inject constructor(
     private val _currentPlaylist = MutableStateFlow<List<TrackDetailsDto>>(emptyList())
     val currentPlaylist: StateFlow<List<TrackDetailsDto>> = _currentPlaylist.asStateFlow()
 
+    private val _shuffleEnabled = MutableStateFlow(false)
+    /** Shuffle mode (remembered between launches); has no effect on My Wave. */
+    val shuffleEnabled: StateFlow<Boolean> = _shuffleEnabled.asStateFlow()
+    /** The queue in its own order while shuffle is on, to come back to when it is turned off. */
+    private var unshuffledQueue: List<TrackDetailsDto>? = null
+
     private val _currentTrack = MutableStateFlow<TrackDetailsDto?>(null)
     val currentTrack: StateFlow<TrackDetailsDto?> = _currentTrack.asStateFlow()
 
@@ -139,6 +145,9 @@ class PlaybackController @Inject constructor(
         playerRepository.playbackErrorEvent.onEach { onPlaybackFailure(it) }.launchIn(scope)
         settingsRepository.crossfadeSeconds
             .onEach { playerRepository.setCrossfadeDuration(it * 1000L) }
+            .launchIn(scope)
+        settingsRepository.shuffleEnabled
+            .onEach { _shuffleEnabled.value = it }
             .launchIn(scope)
 
         // A track that actually renders audio resets error recovery.
@@ -210,6 +219,22 @@ class PlaybackController @Inject constructor(
         startPositionMs: Long = 0L
     ) {
         val track = playlist.find { it.idString == trackId } ?: return
+        val requested = playlist
+        val effectiveSource = source ?: _currentSource.value
+        @Suppress("NAME_SHADOWING")
+        val playlist = when {
+            // Picking a track inside the playing queue: keep its order (shuffled or not)
+            PlaybackQueue.isSameQueue(requested, _currentPlaylist.value) { it.idString } -> requested
+            // A new queue with shuffle on: the picked track first, the rest mixed
+            _shuffleEnabled.value && PlaybackQueue.shuffleApplies(effectiveSource) && !track.isRadio -> {
+                unshuffledQueue = requested
+                PlaybackQueue.shuffledAround(requested, requested.indexOf(track))
+            }
+            else -> {
+                unshuffledQueue = null
+                requested
+            }
+        }
         startRequestId++
         source?.let { _currentSource.value = it }
         _currentPlaylist.value = playlist
@@ -279,6 +304,30 @@ class PlaybackController @Inject constructor(
     fun playRadioStation(station: RadioStation) {
         val radioTrack = radioTrackFor(station)
         playTrack(radioTrack.idString, listOf(radioTrack), PlaylistSource.RADIO)
+    }
+
+    fun toggleShuffle() = setShuffle(!_shuffleEnabled.value)
+
+    /** Turns shuffle on or off; the playing queue is mixed (or put back in order) around the current track. */
+    fun setShuffle(enabled: Boolean) {
+        _shuffleEnabled.value = enabled
+        scope.launch { settingsRepository.setShuffleEnabled(enabled) }
+        val current = _currentTrack.value ?: return
+        if (current.isRadio || !PlaybackQueue.shuffleApplies(_currentSource.value)) return
+        val queue = _currentPlaylist.value
+        val index = queue.indexOfFirst { it.idString == current.idString }
+        if (index < 0) return
+        if (enabled) {
+            if (unshuffledQueue == null) unshuffledQueue = queue
+            _currentPlaylist.value = PlaybackQueue.shuffledAround(queue, index)
+        } else {
+            val original = unshuffledQueue ?: return
+            unshuffledQueue = null
+            _currentPlaylist.value = PlaybackQueue.restoreOrder(original, queue) { it.idString }
+        }
+        // The standby player was primed with the old "next" track
+        prepareNextTrackInQueue()
+        scope.launch { persistSession() }
     }
 
     fun togglePlayPause() {
@@ -411,6 +460,7 @@ class PlaybackController @Inject constructor(
         playerRepository.stop()
         _currentTrack.value = null
         _currentPlaylist.value = emptyList()
+        unshuffledQueue = null
         _currentSource.value = PlaylistSource.NONE
         restoredPositionMs.value = 0L
         scope.launch { stateStore.clear() }

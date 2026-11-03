@@ -2,7 +2,9 @@ package com.korenskoy.yandexmusic.data.player
 
 /** Where the current queue came from. */
 enum class PlaylistSource {
-    LIBRARY, VIBE, SEARCH, TRENDS, RADIO, NONE
+    LIBRARY, VIBE, SEARCH, TRENDS, RADIO, NONE,
+    /** One of the user's own playlists. Kept last: the name is persisted in the session file. */
+    PLAYLIST
 }
 
 /** Sleep timer: either a moment in [android.os.SystemClock.elapsedRealtime] time or "at the end of this track". */
@@ -49,6 +51,32 @@ object PlaybackQueue {
         }
         return null
     }
+
+    /** Shuffle mode applies to everything except My Wave (an endless stream) and radio. */
+    fun shuffleApplies(source: PlaylistSource): Boolean =
+        source != PlaylistSource.VIBE && source != PlaylistSource.RADIO
+
+    /** Shuffle: the track at [currentIndex] goes first, the rest follow in random order. */
+    fun <T> shuffledAround(queue: List<T>, currentIndex: Int, random: kotlin.random.Random = kotlin.random.Random): List<T> {
+        if (currentIndex !in queue.indices) return queue.shuffled(random)
+        val rest = queue.filterIndexed { index, _ -> index != currentIndex }.shuffled(random)
+        return listOf(queue[currentIndex]) + rest
+    }
+
+    /**
+     * Shuffle off: back to the [original] order, keeping only what is still in [shuffled] (tracks removed
+     * meanwhile stay removed) and appending what was added to the shuffled queue.
+     */
+    fun <T, K> restoreOrder(original: List<T>, shuffled: List<T>, key: (T) -> K): List<T> {
+        val present = shuffled.mapTo(HashSet()) { key(it) }
+        val kept = original.filter { key(it) in present }
+        val keptKeys = kept.mapTo(HashSet()) { key(it) }
+        return kept + shuffled.filter { key(it) !in keptKeys }
+    }
+
+    /** Same tracks in the same order: picking a track inside the playing queue, not starting a new one. */
+    fun <T, K> isSameQueue(a: List<T>, b: List<T>, key: (T) -> K): Boolean =
+        a === b || (a.size == b.size && a.indices.all { key(a[it]) == key(b[it]) })
 
     fun <T> snapshotWindow(queue: List<T>, currentIndex: Int): List<T> {
         if (currentIndex < 0) return queue.take(SNAPSHOT_AFTER)

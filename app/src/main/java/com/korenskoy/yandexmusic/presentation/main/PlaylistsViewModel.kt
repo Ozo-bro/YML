@@ -86,12 +86,46 @@ class PlaylistsViewModel @Inject constructor(
 
     fun play(shuffle: Boolean) {
         val tracks = _opened.value?.tracks.orEmpty().let { if (shuffle) it.shuffled() else it }
-        tracks.firstOrNull()?.let { playbackController.playTrack(it.idString, tracks, PlaylistSource.LIBRARY) }
+        tracks.firstOrNull()?.let { playbackController.playTrack(it.idString, tracks, PlaylistSource.PLAYLIST) }
     }
 
     fun playTrack(trackId: String) {
         val tracks = _opened.value?.tracks ?: return
-        playbackController.playTrack(trackId, tracks, PlaylistSource.LIBRARY)
+        playbackController.playTrack(trackId, tracks, PlaylistSource.PLAYLIST)
+    }
+
+    /** The playlist being loaded to start from the car screen (its kind), for a spinner on its tile. */
+    private val _starting = MutableStateFlow<String?>(null)
+    val starting: StateFlow<String?> = _starting.asStateFlow()
+    private var startJob: Job? = null
+
+    /** Fresh list from the server (a playlist made on the phone shows up in the car). */
+    fun refresh() {
+        viewModelScope.launch { repository.refresh() }
+    }
+
+    /** Plays a whole playlist without opening it (car screen); shuffle mode applies as usual. */
+    fun playPlaylist(playlist: UserPlaylistDto) {
+        startJob?.cancel()
+        _starting.value = playlist.kindString
+        startJob = viewModelScope.launch {
+            try {
+                val tracks = repository.tracks(playlist)
+                val first = if (playbackController.shuffleEnabled.value) tracks.randomOrNull() else tracks.firstOrNull()
+                if (first == null) {
+                    _messages.tryEmit(context.getString(R.string.car_playlist_empty, playlist.title.orEmpty()))
+                } else {
+                    playbackController.playTrack(first.idString, tracks, PlaylistSource.PLAYLIST)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "Playlist start failed", e)
+                _messages.tryEmit(context.getString(R.string.playlist_msg_failed))
+            } finally {
+                if (_starting.value == playlist.kindString) _starting.value = null
+            }
+        }
     }
 
     // endregion

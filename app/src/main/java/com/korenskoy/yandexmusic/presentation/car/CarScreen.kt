@@ -7,6 +7,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -33,6 +37,9 @@ import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.HeartBroken
+import androidx.compose.material.icons.rounded.Shuffle
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material.icons.automirrored.rounded.TrendingUp
@@ -76,6 +83,8 @@ import coil3.request.crossfade
 import com.korenskoy.yandexmusic.R
 import com.korenskoy.yandexmusic.data.dto.TrackDetailsDto
 import com.korenskoy.yandexmusic.data.player.PlaylistSource
+import com.korenskoy.yandexmusic.data.player.PlaybackQueue
+import com.korenskoy.yandexmusic.data.dto.UserPlaylistDto
 import com.korenskoy.yandexmusic.presentation.hifi.ArtworkTint
 import com.korenskoy.yandexmusic.presentation.hifi.HiFi
 import com.korenskoy.yandexmusic.presentation.hifi.HiFiBackdrop
@@ -101,13 +110,14 @@ import java.util.Locale
 val LocalCarClock = androidx.compose.runtime.staticCompositionLocalOf<() -> Long> { System::currentTimeMillis }
 
 /** The source tiles of the dock, in order. */
-enum class CarSource { WAVE, LIKED, HITS, DOWNLOADED }
+enum class CarSource { WAVE, LIKED, PLAYLISTS, HITS, DOWNLOADED }
 
 /** Which dock tile is lit for the playing [source]. Pure; unit-tested. */
 fun carSourceOf(source: PlaylistSource, isRadio: Boolean): CarSource? = when {
     isRadio -> null
     source == PlaylistSource.VIBE -> CarSource.WAVE
     source == PlaylistSource.LIBRARY -> CarSource.LIKED
+    source == PlaylistSource.PLAYLIST -> CarSource.PLAYLISTS
     source == PlaylistSource.TRENDS -> CarSource.HITS
     else -> null
 }
@@ -155,9 +165,18 @@ fun CarScreen(
     nextTrack: TrackDetailsDto? = null,
     source: PlaylistSource = PlaylistSource.NONE,
     isLiked: Boolean = currentTrack?.let { likedTrackIds.contains(it.idString) } == true,
-    isBuffering: Boolean = false
+    isBuffering: Boolean = false,
+    playlists: List<UserPlaylistDto> = emptyList(),
+    startingPlaylistKind: String? = null,
+    onPlayPlaylist: (UserPlaylistDto) -> Unit = {},
+    onOpenPlaylists: () -> Unit = {},
+    shuffleEnabled: Boolean = false,
+    onToggleShuffle: () -> Unit = {}
 ) {
     androidx.activity.compose.BackHandler(onBack = onExit)
+    // The playlist picker takes the cover's place; Back closes it first
+    var showPlaylists by remember { mutableStateOf(false) }
+    androidx.activity.compose.BackHandler(enabled = showPlaylists) { showPlaylists = false }
     val view = androidx.compose.ui.platform.LocalView.current
     DisposableEffect(Unit) {
         view.keepScreenOn = true
@@ -169,11 +188,15 @@ fun CarScreen(
 
     val playPause = { if (!isPlaying && currentTrack == null) onPlayMyVibe() else onPlayPauseClick() }
     val isRadio = currentTrack?.isRadio == true
-    val active = carSourceOf(source, isRadio)
+    val active = if (showPlaylists) CarSource.PLAYLISTS else carSourceOf(source, isRadio)
+    // Shuffle means nothing for the endless wave (and radio)
+    val showShuffle = currentTrack != null && !isRadio && PlaybackQueue.shuffleApplies(source)
+    val pickPlaylist: (UserPlaylistDto) -> Unit = { onPlayPlaylist(it); showPlaylists = false }
     val sourceLabel = when (active) {
         CarSource.WAVE -> stringResource(R.string.car_source_wave)
         CarSource.LIKED -> stringResource(R.string.library_liked)
         CarSource.HITS -> stringResource(R.string.car_source_hits)
+        CarSource.PLAYLISTS -> if (showPlaylists) "" else stringResource(R.string.car_source_playlists)
         else -> ""
     }
     val coverUrl = currentTrack?.coverUri.toCoverUrl("400x400")
@@ -187,6 +210,10 @@ fun CarScreen(
     val sources = listOf(
         DockItem(CarSource.WAVE, Icons.Rounded.Waves, stringResource(R.string.car_source_wave), onPlayMyVibe),
         DockItem(CarSource.LIKED, Icons.Rounded.Favorite, stringResource(R.string.car_source_liked), onPlayFavorites),
+        DockItem(CarSource.PLAYLISTS, Icons.AutoMirrored.Rounded.QueueMusic, stringResource(R.string.car_source_playlists)) {
+            showPlaylists = !showPlaylists
+            if (showPlaylists) onOpenPlaylists()
+        },
         DockItem(CarSource.HITS, Icons.AutoMirrored.Rounded.TrendingUp, stringResource(R.string.car_source_hits), onPlayHits),
         DockItem(CarSource.DOWNLOADED, Icons.Rounded.DownloadDone, stringResource(R.string.car_source_downloaded), onPlayDownloaded)
     )
@@ -244,12 +271,17 @@ fun CarScreen(
                             onPlayPause = playPause, onPrev = onPrevClick, onNext = onNextClick,
                             onLike = { currentTrack?.let(onToggleLike) }, onDislike = { currentTrack?.let(onDislikeClick) },
                             sources = sources, active = active,
+                            showShuffle = showShuffle, shuffleEnabled = shuffleEnabled, onToggleShuffle = onToggleShuffle,
                             modifier = Modifier.width(u(652f)).fillMaxHeight()
                         )
                     }
                     val far: @Composable () -> Unit = {
                         Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
-                            CoverWithNext(u, currentTrack, nextTrack, Modifier.size(u(500f)))
+                            if (showPlaylists) {
+                                PlaylistsPanel(u, playlists, startingPlaylistKind, pickPlaylist, { showPlaylists = false }, Modifier.fillMaxSize())
+                            } else {
+                                CoverWithNext(u, currentTrack, nextTrack, Modifier.size(u(500f)))
+                            }
                         }
                     }
                     if (steeringWheelOnLeft) { driver(); far() } else { far(); driver() }
@@ -259,7 +291,11 @@ fun CarScreen(
                     Modifier.fillMaxSize().padding(horizontal = u(28f)).padding(bottom = u(24f)),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    CoverWithNext(u, currentTrack, nextTrack, Modifier.size(u(440f)))
+                    if (showPlaylists) {
+                        PlaylistsPanel(u, playlists, startingPlaylistKind, pickPlaylist, { showPlaylists = false }, Modifier.fillMaxWidth().height(u(440f)))
+                    } else {
+                        CoverWithNext(u, currentTrack, nextTrack, Modifier.size(u(440f)))
+                    }
                     Spacer(Modifier.height(u(28f)))
                     DriverPanel(
                         u = u, track = currentTrack, sourceLabel = sourceLabel, isPlaying = isPlaying, isLiked = isLiked,
@@ -267,6 +303,7 @@ fun CarScreen(
                         onPlayPause = playPause, onPrev = onPrevClick, onNext = onNextClick,
                         onLike = { currentTrack?.let(onToggleLike) }, onDislike = { currentTrack?.let(onDislikeClick) },
                         sources = sources, active = active,
+                        showShuffle = showShuffle, shuffleEnabled = shuffleEnabled, onToggleShuffle = onToggleShuffle,
                         modifier = Modifier.width(u(560f)).weight(1f),
                         compactDock = true
                     )
@@ -355,7 +392,10 @@ private fun DriverPanel(
     sources: List<DockItem>,
     active: CarSource?,
     modifier: Modifier = Modifier,
-    compactDock: Boolean = false
+    compactDock: Boolean = false,
+    showShuffle: Boolean = false,
+    shuffleEnabled: Boolean = false,
+    onToggleShuffle: () -> Unit = {}
 ) {
     Column(modifier) {
         if (sourceLabel.isNotEmpty()) {
@@ -430,8 +470,16 @@ private fun DriverPanel(
                 )
             }
         }
-        Box(Modifier.fillMaxWidth().padding(top = u(6f)), contentAlignment = Alignment.Center) {
+        Row(
+            Modifier.fillMaxWidth().padding(top = u(6f)),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             if (isRadio) LiveReadout(u) else TimeReadout(u, progress, durationMs)
+            if (showShuffle) {
+                Spacer(Modifier.width(u(16f)))
+                ShuffleButton(u, shuffleEnabled, onToggleShuffle)
+            }
         }
         Spacer(Modifier.weight(1f))
         Dock(u, sources, active, compact = compactDock)
@@ -469,6 +517,143 @@ private fun LiveReadout(u: Scale) {
         Spacer(Modifier.width(u(10f)))
         Text(stringResource(R.string.radio_on_air), color = Color.White, fontSize = u.sp(16f), fontWeight = FontWeight.ExtraBold, letterSpacing = 0.12.em)
     }
+}
+
+/** Shuffle toggle: lit blue while on. */
+@Composable
+private fun ShuffleButton(u: Scale, enabled: Boolean, onClick: () -> Unit) {
+    val description = stringResource(if (enabled) R.string.car_shuffle_on else R.string.car_shuffle_off)
+    Box(
+        Modifier
+            .size(u(56f))
+            .then(
+                if (enabled) Modifier.clip(CircleShape).background(HiFi.Accent.copy(alpha = 0.28f)).border(1.dp, HiFi.Accent, CircleShape)
+                else Modifier.hifiGlass(CircleShape, fill = Color.White.copy(alpha = 0.06f), border = Color.White.copy(alpha = 0.14f))
+            )
+            .clickable(role = Role.Switch, onClickLabel = description, onClick = onClick)
+            .semantics { contentDescription = description },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            Icons.Rounded.Shuffle,
+            contentDescription = null,
+            tint = if (enabled) Color.White else Color.White.copy(alpha = 0.70f),
+            modifier = Modifier.size(u(28f))
+        )
+    }
+}
+
+/**
+ * The user's playlists as big cover tiles, in the cover's place. A tap starts the playlist (shuffle mode
+ * applies); the tile shows a spinner while its tracks load.
+ */
+@Composable
+private fun PlaylistsPanel(
+    u: Scale,
+    playlists: List<UserPlaylistDto>,
+    startingKind: String?,
+    onPick: (UserPlaylistDto) -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val shape = RoundedCornerShape(u(30f))
+    Column(
+        modifier
+            .hifiGlass(shape, fill = Color(0xB3080A12), border = Color.White.copy(alpha = 0.12f))
+            .padding(u(20f))
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                stringResource(R.string.car_playlists_title),
+                color = Color.White,
+                fontSize = u.sp(26f),
+                fontWeight = FontWeight.ExtraBold,
+                modifier = Modifier.weight(1f)
+            )
+            GlassRound(u(56f), stringResource(R.string.car_playlists_close), onClose) {
+                Icon(Icons.Rounded.Close, contentDescription = null, tint = Color.White, modifier = Modifier.size(u(28f)))
+            }
+        }
+        Spacer(Modifier.height(u(16f)))
+        if (playlists.isEmpty()) {
+            Text(
+                stringResource(R.string.car_playlists_empty),
+                color = Color.White.copy(alpha = 0.72f),
+                fontSize = u.sp(18f)
+            )
+        } else {
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(u(150f)),
+                horizontalArrangement = Arrangement.spacedBy(u(16f)),
+                verticalArrangement = Arrangement.spacedBy(u(18f)),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(playlists, key = { it.kindString }) { playlist ->
+                    val tileShape = RoundedCornerShape(u(20f))
+                    Column(
+                        Modifier
+                            .clip(tileShape)
+                            .clickable(role = Role.Button, onClick = { onPick(playlist) })
+                    ) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(1f)
+                                .clip(tileShape)
+                                .background(Brush.linearGradient(listOf(Color(0xFF2A3042), Color(0xFF151821)))),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            val cover = playlist.coverUri.toCoverUrl("300x300")
+                            if (cover != null) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(context).data(cover).size(300).build(),
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } else {
+                                Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = null, tint = Color.White.copy(alpha = 0.6f), modifier = Modifier.size(u(56f)))
+                            }
+                            if (startingKind == playlist.kindString) {
+                                Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)), contentAlignment = Alignment.Center) {
+                                    androidx.compose.material3.CircularProgressIndicator(color = Color.White, strokeWidth = u(4f), modifier = Modifier.size(u(48f)))
+                                }
+                            }
+                        }
+                        Text(
+                            playlist.title.orEmpty(),
+                            color = Color.White,
+                            fontSize = u.sp(18f),
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(top = u(8f))
+                        )
+                        Text(
+                            tracksLabel(playlist.trackCount),
+                            color = Color.White.copy(alpha = 0.60f),
+                            fontSize = u.sp(14f),
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** "1 трек", "3 трека", "25 треков". Pure; unit-tested. */
+fun tracksLabel(count: Int): String {
+    val mod100 = count % 100
+    val mod10 = count % 10
+    val word = when {
+        mod100 in 11..14 -> "треков"
+        mod10 == 1 -> "трек"
+        mod10 in 2..4 -> "трека"
+        else -> "треков"
+    }
+    return "$count $word"
 }
 
 @Composable
