@@ -46,6 +46,8 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.DownloadDone
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -122,7 +124,8 @@ fun PlaylistScreen(
     onRename: (String) -> Unit,
     onDelete: () -> Unit,
     onReorder: (shownOrder: List<String>, newOrder: List<String>) -> Unit = { _, _ -> },
-    onSetPublic: (Boolean) -> Unit = {}
+    onSetPublic: (Boolean) -> Unit = {},
+    onDownload: () -> Unit = {}
 ) {
     val playlist = opened.playlist
     // Track order being edited (null — normal view); saved as one change with "Done"
@@ -281,6 +284,25 @@ fun PlaylistScreen(
                 modifier = Modifier.weight(1f)) { onPlay(false) }
             PlaylistAction(Icons.Default.Shuffle, stringResource(R.string.cd_peremeshat), primary = false, enabled = enabled,
                 modifier = Modifier.weight(1f)) { onPlay(true) }
+            // Offline: a tick once every track is saved, otherwise "download the rest"
+            val allSaved = enabled && opened.tracks.all { it.idString in downloadedTrackIds }
+            val downloadLabel = stringResource(if (allSaved) R.string.playlist_downloaded else R.string.playlist_download)
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .background(Brush.verticalGradient(listOf(Color(0x352A2A38), Color(0x201E1E28))))
+                    .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)), CircleShape)
+                    .clickable(enabled = enabled && !allSaved, onClickLabel = downloadLabel, onClick = onDownload),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    if (allSaved) Icons.Default.DownloadDone else Icons.Default.Download,
+                    contentDescription = downloadLabel,
+                    tint = if (allSaved) Color(0xFF6FA8FF) else Color.White,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
         Spacer(modifier = Modifier.height(12.dp))
 

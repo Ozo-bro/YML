@@ -202,6 +202,30 @@ fun SpectrumRing(
     } else {
         remember { mutableFloatStateOf(0f) }
     }
+    if (lite) {
+        // Light mode: a frozen equalizer looks broken, so a clean progress ring instead — a dim track
+        // and a bright arc for the played part (redrawn only when the progress changes)
+        Canvas(modifier = modifier) {
+            val radius = innerRadius.toPx() + maxLength.toPx() / 2f
+            val stroke = barWidth.toPx() * 1.6f
+            val topLeft = Offset(size.width / 2f - radius, size.height / 2f - radius)
+            val arcSize = androidx.compose.ui.geometry.Size(radius * 2f, radius * 2f)
+            drawCircle(color = restColor, radius = radius, style = androidx.compose.ui.graphics.drawscope.Stroke(width = stroke))
+            val played = progress().coerceIn(0f, 1f)
+            if (played > 0f) {
+                drawArc(
+                    color = playedColor,
+                    startAngle = -90f,
+                    sweepAngle = 360f * played,
+                    useCenter = false,
+                    topLeft = topLeft,
+                    size = arcSize,
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = stroke, cap = StrokeCap.Round)
+                )
+            }
+        }
+        return
+    }
     Canvas(modifier = modifier) {
         val t = clock.value
         val c = Offset(size.width / 2f, size.height / 2f)

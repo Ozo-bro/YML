@@ -87,6 +87,19 @@ jobs:
           chmod +x gradlew
           ./gradlew testDebugUnitTest --no-daemon -Proborazzi.test.record=true \
             --tests "*PlaybackQueueTest" --tests "*HiFiLogicTest" --tests "*CarSplitScreenshotTest"
+      - name: Publish car screens to the ci-screens branch (for review)
+        if: always()
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          [ -d app/build/outputs/split-screens ] || exit 0
+          mkdir -p /tmp/screens && cp app/build/outputs/split-screens/*.png /tmp/screens/
+          cd /tmp/screens
+          git init -q -b ci-screens
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add . && git commit -qm "Car screens for ${GITHUB_SHA::7}"
+          git push -qf "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" ci-screens
       - uses: actions/upload-artifact@v4
         if: always()
         with:

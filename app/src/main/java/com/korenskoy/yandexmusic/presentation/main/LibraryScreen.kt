@@ -145,7 +145,8 @@ fun LibraryScreen(
     onRenamePlaylist: (UserPlaylistDto, String) -> Unit = { _, _ -> },
     onDeletePlaylist: (UserPlaylistDto) -> Unit = {},
     onReorderPlaylist: (UserPlaylistDto, List<String>, List<String>) -> Unit = { _, _, _ -> },
-    onSetPlaylistPublic: (UserPlaylistDto, Boolean) -> Unit = { _, _ -> }
+    onSetPlaylistPublic: (UserPlaylistDto, Boolean) -> Unit = { _, _ -> },
+    onDownloadPlaylist: (UserPlaylistDto) -> Unit = {}
 ) {
     var showSettings by remember { mutableStateOf(false) }
     var showProgressModal by remember { mutableStateOf(false) }
@@ -176,7 +177,8 @@ fun LibraryScreen(
             onRename = { onRenamePlaylist(openedPlaylist.playlist, it) },
             onDelete = { onDeletePlaylist(openedPlaylist.playlist) },
             onReorder = { shown, new -> onReorderPlaylist(openedPlaylist.playlist, shown, new) },
-            onSetPublic = { onSetPlaylistPublic(openedPlaylist.playlist, it) }
+            onSetPublic = { onSetPlaylistPublic(openedPlaylist.playlist, it) },
+            onDownload = { onDownloadPlaylist(openedPlaylist.playlist) }
         )
         return
     }

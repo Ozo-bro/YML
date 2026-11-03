@@ -341,7 +341,8 @@ fun MainScreen(
                         onRenamePlaylist = { playlist, title -> playlistsVm.rename(playlist, title) },
                         onDeletePlaylist = { playlistsVm.delete(it) },
                         onReorderPlaylist = { playlist, shown, new -> playlistsVm.reorder(playlist, shown, new) },
-                        onSetPlaylistPublic = { playlist, public -> playlistsVm.setPublic(playlist, public) }
+                        onSetPlaylistPublic = { playlist, public -> playlistsVm.setPublic(playlist, public) },
+                        onDownloadPlaylist = { playlistsVm.download(it) }
                     )
                     MainTab.CAR -> run {
                         CarScreen(

@@ -224,6 +224,10 @@
     <string name="car_source_radio">Радио</string>
     <string name="car_source_hits">Хиты</string>
     <string name="car_source_playlists">Плейлисты</string>
+    <string name="playlist_msg_download_started">Скачиваю «%1$s» для прослушивания без интернета</string>
+    <string name="playlist_download">Скачать плейлист</string>
+    <string name="playlist_downloaded">Плейлист скачан</string>
+    <string name="car_liked_tile">Мне нравится</string>
     <string name="car_playlists_title">Мои плейлисты</string>
     <string name="car_playlists_empty">Плейлистов пока нет. Создайте их в разделе «Музыка» или в Яндекс Музыке.</string>
     <string name="car_playlist_empty">Плейлист «%1$s» пуст</string>

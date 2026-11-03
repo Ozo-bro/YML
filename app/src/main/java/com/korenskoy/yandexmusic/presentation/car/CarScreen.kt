@@ -230,7 +230,9 @@ fun CarScreen(
             .pointerInput(Unit) { detectTapGestures(onDoubleTap = { playPause() }) }
     ) {
         // Scale the 1280×720 (landscape) or 600×1060 (portrait) layout to this head unit
-        val s = if (isLandscape) minOf(maxWidth / 1280.dp, maxHeight / 720.dp) else minOf(maxWidth / 600.dp, maxHeight / 1060.dp)
+        // Landscape needs 1140 design units across (driver panel + a 360 cover) and 720 down: in a narrower
+        // split window the layout keeps its height and the cover gives up width, instead of shrinking it all
+        val s = if (isLandscape) minOf(maxWidth / 1140.dp, maxHeight / 720.dp) else minOf(maxWidth / 600.dp, maxHeight / 1060.dp)
         val u = Scale(s.coerceIn(0.55f, 2f))
         val farFocus = if (isLandscape) Offset(if (steeringWheelOnLeft) 0.78f else 0.22f, 0.45f) else Offset(0.5f, 0.25f)
         HiFiBackdrop(tint = tint, coverUrl = coverUrl, glowCenter = farFocus, bottomFade = !isLandscape)
@@ -276,11 +278,13 @@ fun CarScreen(
                         )
                     }
                     val far: @Composable () -> Unit = {
-                        Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                        BoxWithConstraints(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                            // The cover takes all the room it has (a square), however wide the split window is
+                            val coverSide = minOf(maxWidth, maxHeight)
                             if (showPlaylists) {
-                                PlaylistsPanel(u, playlists, startingPlaylistKind, pickPlaylist, { showPlaylists = false }, Modifier.fillMaxSize())
+                                PlaylistsPanel(u, playlists, startingPlaylistKind, pickPlaylist, likedTrackIds.size, { onPlayFavorites(); showPlaylists = false }, { showPlaylists = false }, Modifier.fillMaxSize())
                             } else {
-                                CoverWithNext(u, currentTrack, nextTrack, Modifier.size(u(500f)))
+                                CoverWithNext(u, currentTrack, nextTrack, Modifier.size(coverSide))
                             }
                         }
                     }
@@ -292,7 +296,7 @@ fun CarScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     if (showPlaylists) {
-                        PlaylistsPanel(u, playlists, startingPlaylistKind, pickPlaylist, { showPlaylists = false }, Modifier.fillMaxWidth().height(u(440f)))
+                        PlaylistsPanel(u, playlists, startingPlaylistKind, pickPlaylist, likedTrackIds.size, { onPlayFavorites(); showPlaylists = false }, { showPlaylists = false }, Modifier.fillMaxWidth().height(u(440f)))
                     } else {
                         CoverWithNext(u, currentTrack, nextTrack, Modifier.size(u(440f)))
                     }
@@ -430,6 +434,8 @@ private fun DriverPanel(
             }
         }
 
+        // The gauge cluster sits midway between the title and the dock, so no empty band is left above the dock
+        Spacer(Modifier.weight(1f))
         // The gauge cluster; in portrait (560 wide) the side controls shrink so all five fit
         val sideSize = if (compactDock) 64f else 72f
         val skipSize = if (compactDock) 88f else 96f
@@ -553,6 +559,8 @@ private fun PlaylistsPanel(
     playlists: List<UserPlaylistDto>,
     startingKind: String?,
     onPick: (UserPlaylistDto) -> Unit,
+    likedCount: Int,
+    onPickLiked: () -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -576,19 +584,38 @@ private fun PlaylistsPanel(
             }
         }
         Spacer(Modifier.height(u(16f)))
-        if (playlists.isEmpty()) {
-            Text(
-                stringResource(R.string.car_playlists_empty),
-                color = Color.White.copy(alpha = 0.72f),
-                fontSize = u.sp(18f)
-            )
-        } else {
+        run {
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(u(150f)),
                 horizontalArrangement = Arrangement.spacedBy(u(16f)),
                 verticalArrangement = Arrangement.spacedBy(u(18f)),
                 modifier = Modifier.fillMaxSize()
             ) {
+                // "Мне нравится" first, like in Yandex Music
+                item(key = "liked") {
+                    val tileShape = RoundedCornerShape(u(20f))
+                    Column(Modifier.clip(tileShape).clickable(role = Role.Button, onClick = onPickLiked)) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(1f)
+                                .clip(tileShape)
+                                .background(Brush.linearGradient(listOf(Color(0xFFFF4D6D), Color(0xFF7B2CBF)))),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Rounded.Favorite, contentDescription = null, tint = Color.White, modifier = Modifier.size(u(64f)))
+                        }
+                        Text(
+                            stringResource(R.string.car_liked_tile),
+                            color = Color.White,
+                            fontSize = u.sp(18f),
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 2,
+                            modifier = Modifier.padding(top = u(8f))
+                        )
+                        Text(tracksLabel(likedCount), color = Color.White.copy(alpha = 0.60f), fontSize = u.sp(14f), maxLines = 1)
+                    }
+                }
                 items(playlists, key = { it.kindString }) { playlist ->
                     val tileShape = RoundedCornerShape(u(20f))
                     Column(

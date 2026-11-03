@@ -102,30 +102,25 @@ class CarSplitScreenshotTest {
         frames()
     }
 
-    // 1920×720 head unit, music ≈ 2/3 of the width (≈1280×720 px, minus the status bar)
+    // 1920×720 head unit in split mode, sizes measured on the user's photos (the split border moves)
     @Test
-    @Config(qualifiers = "w1280dp-h690dp-land-mdpi")
-    fun split23Mdpi() { show(); snap("split23_mdpi_player") }
+    @Config(qualifiers = "w1040dp-h610dp-land-mdpi")
+    fun splitWide() { show(); snap("split_1040x610_player") }
 
     @Test
-    @Config(qualifiers = "w1280dp-h690dp-land-mdpi")
-    fun split23MdpiPlaylists() { show(); openPlaylists(); snap("split23_mdpi_playlists") }
+    @Config(qualifiers = "w1040dp-h610dp-land-mdpi")
+    fun splitWidePlaylists() { show(); openPlaylists(); snap("split_1040x610_playlists") }
 
     @Test
-    @Config(qualifiers = "w853dp-h460dp-land-hdpi")
-    fun split23Hdpi() { show(shuffle = false); snap("split23_hdpi_player") }
+    @Config(qualifiers = "w880dp-h610dp-land-mdpi")
+    fun splitNarrow() { show(shuffle = false); snap("split_880x610_player") }
 
     @Test
-    @Config(qualifiers = "w853dp-h460dp-land-hdpi")
-    fun split23HdpiPlaylists() { show(); openPlaylists(); snap("split23_hdpi_playlists") }
-
-    // The split border moved further: music ≈ half of the screen
-    @Test
-    @Config(qualifiers = "w960dp-h690dp-land-mdpi")
-    fun splitHalfMdpi() { show(); snap("split_half_mdpi_player") }
+    @Config(qualifiers = "w880dp-h610dp-land-mdpi")
+    fun splitNarrowPlaylists() { show(); openPlaylists(); snap("split_880x610_playlists") }
 
     // No split: the whole 1920×720 screen
     @Test
     @Config(qualifiers = "w1920dp-h690dp-land-mdpi")
-    fun fullWidthMdpi() { show(); snap("full_1920x720_player") }
+    fun fullWidth() { show(); snap("full_1920x690_player") }
 }

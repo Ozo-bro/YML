@@ -36,6 +36,7 @@ class LikedTracksDownloadWorker(
     @InstallIn(SingletonComponent::class)
     interface Dependencies {
         fun libraryRepository(): LibraryRepository
+        fun playlistsRepository(): com.korenskoy.yandexmusic.data.repository.UserPlaylistsRepository
         fun downloadManager(): TrackDownloadManager
         fun preloadManager(): TrackPreloadManager
     }
@@ -48,7 +49,23 @@ class LikedTracksDownloadWorker(
         library.loadCached()
         val single = inputData.getString(KEY_TRACK_ID)
         val upgrade = inputData.getBoolean(KEY_UPGRADE, false)
-        val tracks = library.likedTracks.value
+        val playlistKind = inputData.getString(KEY_PLAYLIST_KIND)
+        val source = if (playlistKind != null) {
+            // One of the user's playlists instead of the liked tracks
+            val playlists = deps.playlistsRepository()
+            playlists.loadCached()
+            val playlist = playlists.playlists.value.firstOrNull { it.kindString == playlistKind } ?: return Result.success()
+            try {
+                playlists.tracks(playlist)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                return Result.retry()
+            }
+        } else {
+            library.likedTracks.value
+        }
+        val tracks = source
             .filter { single == null || it.idString == single }
             .filter { downloads.isTrackDownloaded(it.idString) == upgrade }
         if (tracks.isEmpty()) return Result.success()
@@ -110,6 +127,7 @@ class LikedTracksDownloadWorker(
     companion object {
         const val KEY_TRACK_ID = "track_id"
         const val KEY_UPGRADE = "upgrade_quality"
+        const val KEY_PLAYLIST_KIND = "playlist_kind"
         private const val CHANNEL_ID = "yandex_music_lite_downloads"
         private const val NOTIFICATION_ID = 4201
     }

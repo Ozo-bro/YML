@@ -34,7 +34,8 @@ import javax.inject.Inject
 class PlaylistsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val repository: UserPlaylistsRepository,
-    private val playbackController: PlaybackController
+    private val playbackController: PlaybackController,
+    private val downloadScheduler: com.korenskoy.yandexmusic.data.download.DownloadScheduler
 ) : ViewModel() {
 
     val playlists: StateFlow<List<UserPlaylistDto>> = repository.playlists
@@ -98,6 +99,14 @@ class PlaylistsViewModel @Inject constructor(
     private val _starting = MutableStateFlow<String?>(null)
     val starting: StateFlow<String?> = _starting.asStateFlow()
     private var startJob: Job? = null
+
+    /** Downloads the playlist for offline listening (in the background, survives closing the app). */
+    fun download(playlist: UserPlaylistDto) {
+        viewModelScope.launch {
+            downloadScheduler.downloadPlaylist(playlist.kindString)
+            say(R.string.playlist_msg_download_started, playlist.title.orEmpty())
+        }
+    }
 
     /** Fresh list from the server (a playlist made on the phone shows up in the car). */
     fun refresh() {

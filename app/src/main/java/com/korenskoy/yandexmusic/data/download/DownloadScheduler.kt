@@ -67,6 +67,16 @@ class DownloadScheduler @Inject constructor(
         workManager.enqueueUniqueWork(UPGRADE_WORK, ExistingWorkPolicy.KEEP, request)
     }
 
+    /** Saves every not-yet-downloaded track of one of the user's playlists. */
+    suspend fun downloadPlaylist(kind: String) {
+        val request = OneTimeWorkRequestBuilder<LikedTracksDownloadWorker>()
+            .setConstraints(constraints())
+            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+            .setInputData(workDataOf(LikedTracksDownloadWorker.KEY_PLAYLIST_KIND to kind))
+            .build()
+        workManager.enqueueUniqueWork("$PLAYLIST_WORK_PREFIX$kind", ExistingWorkPolicy.KEEP, request)
+    }
+
     suspend fun downloadTrack(trackId: String) {
         val request = OneTimeWorkRequestBuilder<LikedTracksDownloadWorker>()
             .setConstraints(constraints())
@@ -89,6 +99,7 @@ class DownloadScheduler @Inject constructor(
     private companion object {
         const val ALL_WORK = "download_liked_tracks"
         const val TRACK_WORK_PREFIX = "download_track_"
+        const val PLAYLIST_WORK_PREFIX = "download_playlist_"
         const val UPGRADE_WORK = "upgrade_downloaded_quality"
     }
 }
