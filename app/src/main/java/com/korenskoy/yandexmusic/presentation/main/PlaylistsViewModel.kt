@@ -19,7 +19,10 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
@@ -43,8 +46,8 @@ class PlaylistsViewModel @Inject constructor(
 
     /** Own playlists, then the liked ones of other people: for browsing and playing. */
     val allPlaylists: StateFlow<List<UserPlaylistDto>> =
-        kotlinx.coroutines.flow.combine(repository.playlists, repository.likedPlaylists) { own, liked -> own + liked }
-            .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, repository.playlists.value + repository.likedPlaylists.value)
+        combine(repository.playlists, repository.likedPlaylists) { own, liked -> own + liked }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, repository.playlists.value + repository.likedPlaylists.value)
 
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
     val messages: SharedFlow<String> = _messages
