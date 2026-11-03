@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -275,7 +274,7 @@ fun CarScreen(
             androidx.compose.material3.LocalTextStyle provides androidx.compose.material3.LocalTextStyle.current.copy(lineHeight = TextUnit.Unspecified)
         ) {
             Column(Modifier.fillMaxSize().systemBarsPadding()) {
-                CarHeader(u, sourceLabel, onExit)
+                CarHeader(u, sourceLabel, currentTrack, isRadio, onExit)
                 if (isLandscape) {
                     Row(
                         Modifier.fillMaxSize().padding(start = u(40f), end = u(40f), bottom = u(28f)),
@@ -313,25 +312,46 @@ private class Scale(val factor: Float) {
 
 private data class SourceItem(val source: CarSource, val icon: ImageVector, val label: String, val onClick: () -> Unit)
 
+/** Top line: back, what plays (source · title · artist), the clock. */
 @Composable
-private fun CarHeader(u: Scale, sourceLabel: String, onExit: () -> Unit) {
+private fun CarHeader(u: Scale, sourceLabel: String, track: TrackDetailsDto?, isRadio: Boolean, onExit: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(start = u(40f), end = u(40f), top = u(20f), bottom = u(12f)),
+            .padding(start = u(40f), end = u(40f), top = u(18f), bottom = u(14f)),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        FlatRound(u(60f), stringResource(R.string.car_exit), onClick = onExit) {
-            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null, tint = Color.White, modifier = Modifier.size(u(28f)))
+        FlatRound(u(64f), stringResource(R.string.car_exit), onClick = onExit) {
+            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null, tint = Color.White, modifier = Modifier.size(u(30f)))
         }
-        Spacer(Modifier.width(u(16f)))
-        Column {
-            Text(stringResource(R.string.car_label), color = Flat.TextDim, fontSize = u.sp(13f), fontWeight = FontWeight.ExtraBold, letterSpacing = 0.16.em)
-            if (sourceLabel.isNotEmpty()) {
-                Text(sourceLabel, color = Color.White, fontSize = u.sp(17f), fontWeight = FontWeight.Bold, maxLines = 1)
-            }
+        Spacer(Modifier.width(u(20f)))
+        Column(Modifier.weight(1f)) {
+            Text(
+                (sourceLabel.ifEmpty { stringResource(R.string.car_label) }).uppercase(),
+                color = Flat.TextDim,
+                fontSize = u.sp(13f),
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 0.14.em,
+                maxLines = 1
+            )
+            Text(
+                track?.title ?: stringResource(R.string.car_source_wave),
+                color = Color.White,
+                fontSize = u.sp(34f),
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = (-0.01).em,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                if (isRadio) stringResource(R.string.mini_player_live) else track?.artists?.joinToString { it.name ?: "" }.orEmpty(),
+                color = Flat.TextDim,
+                fontSize = u.sp(21f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
-        Spacer(Modifier.weight(1f))
+        Spacer(Modifier.width(u(20f)))
         CarClock(u)
     }
 }
@@ -387,12 +407,10 @@ private fun DriverPanel(
 ) {
     val context = LocalContext.current
     Column(modifier) {
-        // The cover, and next to it the title, the artist and the rating pair (like · dislike)
+        // The cover as large as the room allows, the rating pair (like · dislike) in a column next to it
         Row(Modifier.fillMaxWidth().weight(1f), verticalAlignment = Alignment.CenterVertically) {
-            // Up to 250 units: the title and the rating buttons keep enough room next to it
             Box(
                 Modifier
-                    .sizeIn(maxWidth = u(250f), maxHeight = u(250f))
                     .fillMaxHeight()
                     .aspectRatio(1f, matchHeightConstraintsFirst = true)
                     .clip(RoundedCornerShape(u(24f)))
@@ -405,40 +423,21 @@ private fun DriverPanel(
                     modifier = Modifier.fillMaxSize()
                 )
             }
-            Spacer(Modifier.width(u(24f)))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    track?.title ?: stringResource(R.string.car_source_wave),
-                    color = Color.White,
-                    fontSize = u.sp(38f),
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = (-0.02).em,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    if (isRadio) stringResource(R.string.mini_player_live) else track?.artists?.joinToString { it.name ?: "" }.orEmpty(),
-                    color = Flat.TextDim,
-                    fontSize = u.sp(24f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = u(4f))
-                )
-                Spacer(Modifier.height(u(18f)))
-                Row(horizontalArrangement = Arrangement.spacedBy(u(14f))) {
-                    FlatRound(u(76f), stringResource(R.string.cd_nravitsya), onClick = onLike) {
-                        Icon(
-                            if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                            contentDescription = null,
-                            tint = if (isLiked) Color(0xFFFF4D6D) else Color.White,
-                            modifier = Modifier.size(u(36f))
-                        )
-                    }
-                    FlatRound(u(76f), stringResource(R.string.cd_ne_nravitsya), onClick = onDislike) {
-                        Icon(Icons.Rounded.HeartBroken, contentDescription = null, tint = Color.White, modifier = Modifier.size(u(34f)))
-                    }
+            Spacer(Modifier.weight(1f))
+            Column(verticalArrangement = Arrangement.spacedBy(u(18f))) {
+                FlatRound(u(96f), stringResource(R.string.cd_nravitsya), onClick = onLike) {
+                    Icon(
+                        if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                        contentDescription = null,
+                        tint = if (isLiked) Color(0xFFFF4D6D) else Color.White,
+                        modifier = Modifier.size(u(42f))
+                    )
+                }
+                FlatRound(u(96f), stringResource(R.string.cd_ne_nravitsya), onClick = onDislike) {
+                    Icon(Icons.Rounded.HeartBroken, contentDescription = null, tint = Color.White, modifier = Modifier.size(u(40f)))
                 }
             }
+            Spacer(Modifier.weight(1f))
         }
 
         Spacer(Modifier.height(u(22f)))
