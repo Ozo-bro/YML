@@ -38,7 +38,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * The car screen in a 1920×1080 head unit's split window (music ≈ 2/3 of the width), at two common
+ * The car screen in a 1920×720 head unit's split window (music ≈ 2/3 of the width), at two common
  * head-unit densities. Rendered for review only (CI uploads them), not compared against references.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -102,23 +102,30 @@ class CarSplitScreenshotTest {
         frames()
     }
 
+    // 1920×720 head unit, music ≈ 2/3 of the width (≈1280×720 px, minus the status bar)
     @Test
-    @Config(qualifiers = "w1270dp-h1040dp-land-mdpi")
-    fun splitMdpi() { show(); snap("split_mdpi_player") }
+    @Config(qualifiers = "w1280dp-h690dp-land-mdpi")
+    fun split23Mdpi() { show(); snap("split23_mdpi_player") }
 
     @Test
-    @Config(qualifiers = "w1270dp-h1040dp-land-mdpi")
-    fun splitMdpiPlaylists() { show(); openPlaylists(); snap("split_mdpi_playlists") }
+    @Config(qualifiers = "w1280dp-h690dp-land-mdpi")
+    fun split23MdpiPlaylists() { show(); openPlaylists(); snap("split23_mdpi_playlists") }
 
     @Test
-    @Config(qualifiers = "w847dp-h693dp-land-hdpi")
-    fun splitHdpi() { show(shuffle = false); snap("split_hdpi_player") }
+    @Config(qualifiers = "w853dp-h460dp-land-hdpi")
+    fun split23Hdpi() { show(shuffle = false); snap("split23_hdpi_player") }
 
     @Test
-    @Config(qualifiers = "w847dp-h693dp-land-hdpi")
-    fun splitHdpiPlaylists() { show(); openPlaylists(); snap("split_hdpi_playlists") }
+    @Config(qualifiers = "w853dp-h460dp-land-hdpi")
+    fun split23HdpiPlaylists() { show(); openPlaylists(); snap("split23_hdpi_playlists") }
 
+    // The split border moved further: music ≈ half of the screen
     @Test
-    @Config(qualifiers = "w1280dp-h720dp-land-mdpi")
-    fun fullScreenReference() { show(); snap("full_1280x720_player") }
+    @Config(qualifiers = "w960dp-h690dp-land-mdpi")
+    fun splitHalfMdpi() { show(); snap("split_half_mdpi_player") }
+
+    // No split: the whole 1920×720 screen
+    @Test
+    @Config(qualifiers = "w1920dp-h690dp-land-mdpi")
+    fun fullWidthMdpi() { show(); snap("full_1920x720_player") }
 }
