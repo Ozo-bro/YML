@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -388,8 +389,10 @@ private fun DriverPanel(
     Column(modifier) {
         // The cover, and next to it the title, the artist and the rating pair (like · dislike)
         Row(Modifier.fillMaxWidth().weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            // Up to 250 units: the title and the rating buttons keep enough room next to it
             Box(
                 Modifier
+                    .sizeIn(maxWidth = u(250f), maxHeight = u(250f))
                     .fillMaxHeight()
                     .aspectRatio(1f, matchHeightConstraintsFirst = true)
                     .clip(RoundedCornerShape(u(24f)))
