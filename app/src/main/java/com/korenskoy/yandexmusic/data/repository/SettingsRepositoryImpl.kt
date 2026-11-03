@@ -62,6 +62,15 @@ class SettingsRepositoryImpl @Inject constructor(
         context.dataStore.edit { prefs -> prefs[SHUFFLE_ENABLED_KEY] = enabled }
     }
 
+    private val SHOW_LYRICS_KEY = booleanPreferencesKey("show_lyrics")
+    override val showLyrics: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[SHOW_LYRICS_KEY] ?: true
+    }
+
+    override suspend fun setShowLyrics(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[SHOW_LYRICS_KEY] = enabled }
+    }
+
     private val UI_SCALE_AUTO_KEY = booleanPreferencesKey("ui_scale_auto")
     override val uiScaleAuto: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[UI_SCALE_AUTO_KEY] ?: SettingsRepository.DEFAULT_UI_SCALE_AUTO

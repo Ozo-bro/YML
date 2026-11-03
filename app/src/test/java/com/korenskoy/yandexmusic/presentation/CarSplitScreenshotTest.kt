@@ -69,7 +69,15 @@ class CarSplitScreenshotTest {
     )
     private val tint = ArtworkTint(Color(0xFF3F6FC4), Color(0xFF1B2A6B))
 
-    private fun show(shuffle: Boolean = true) {
+    private val lyrics = com.korenskoy.yandexmusic.data.lyrics.Lyrics.Synced(
+        listOf(
+            "Тёплое место, но улицы ждут", "Отпечатков наших ног", "Звёздная пыль на сапогах",
+            "Мягкое кресло, клетчатый плед", "Не нажатый вовремя курок", "Солнечный день в ослепительных снах",
+            "Группа крови на рукаве", "Мой порядковый номер на рукаве"
+        ).mapIndexed { i, text -> com.korenskoy.yandexmusic.data.lyrics.LyricLine(60_000L + i * 6_000L, text) }
+    )
+
+    private fun show(shuffle: Boolean = true, withLyrics: Boolean = false) {
         compose.mainClock.autoAdvance = false
         compose.setContent {
             YandexMusicTheme {
@@ -81,7 +89,8 @@ class CarSplitScreenshotTest {
                             onPrevClick = {}, onToggleLike = {}, onDislikeClick = {}, onPlayMyVibe = {}, onPlayFavorites = {}, onPlayHits = {},
                             onPlayDownloaded = {}, onExit = {}, isLandscape = true, progress = { 82_000L }, durationMs = 215_000,
                             nextTrack = next, source = PlaylistSource.PLAYLIST, playlists = playlists, startingPlaylistKind = "1004",
-                            shuffleEnabled = shuffle
+                            shuffleEnabled = shuffle,
+                            lyrics = if (withLyrics) lyrics else null
                         )
                     }
                 }
@@ -118,6 +127,10 @@ class CarSplitScreenshotTest {
     @Test
     @Config(qualifiers = "w880dp-h610dp-land-mdpi")
     fun splitNarrowPlaylists() { show(); openPlaylists(); snap("split_880x610_playlists") }
+
+    @Test
+    @Config(qualifiers = "w1040dp-h610dp-land-mdpi")
+    fun splitWideLyrics() { show(withLyrics = true); snap("split_1040x610_lyrics") }
 
     // No split: the whole 1920×720 screen
     @Test

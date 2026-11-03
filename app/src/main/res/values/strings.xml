@@ -234,6 +234,8 @@
     <string name="car_playlists_close">Закрыть плейлисты</string>
     <string name="car_shuffle_on">Перемешивание включено</string>
     <string name="car_shuffle_off">Перемешивание выключено</string>
+    <string name="car_lyrics_show">Показать текст песни</string>
+    <string name="car_lyrics_hide">Показать обложку</string>
     <string name="car_source_downloaded">Скачанные</string>
     <string name="car_exit">Выйти из режима В авто</string>
     <string name="car_time_elapsed_remaining">Прошло %1$s, осталось %2$s</string>

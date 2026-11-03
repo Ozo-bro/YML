@@ -38,7 +38,13 @@ class PlaylistsViewModel @Inject constructor(
     private val downloadScheduler: com.korenskoy.yandexmusic.data.download.DownloadScheduler
 ) : ViewModel() {
 
+    /** The user's own playlists (the ones tracks can be added to). */
     val playlists: StateFlow<List<UserPlaylistDto>> = repository.playlists
+
+    /** Own playlists, then the liked ones of other people: for browsing and playing. */
+    val allPlaylists: StateFlow<List<UserPlaylistDto>> =
+        kotlinx.coroutines.flow.combine(repository.playlists, repository.likedPlaylists) { own, liked -> own + liked }
+            .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, repository.playlists.value + repository.likedPlaylists.value)
 
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
     val messages: SharedFlow<String> = _messages
@@ -51,9 +57,9 @@ class PlaylistsViewModel @Inject constructor(
 
     init {
         // Edits (here or in Android Auto's list), server refreshes and account changes
-        repository.playlists.onEach { list ->
+        allPlaylists.onEach { _ ->
             val opened = _opened.value ?: return@onEach
-            val now = list.firstOrNull { it.kindString == opened.playlist.kindString }
+            val now = repository.find(opened.playlist.key)
             when {
                 now == null -> close() // deleted, or another account
                 now.revision != opened.playlist.revision -> open(now, keepShownTracks = true)
@@ -65,7 +71,7 @@ class PlaylistsViewModel @Inject constructor(
     /** @param keepShownTracks reload in place (after an edit) instead of showing the spinner. */
     fun open(playlist: UserPlaylistDto, keepShownTracks: Boolean = false) {
         openJob?.cancel()
-        val shown = _opened.value?.takeIf { keepShownTracks && it.playlist.kindString == playlist.kindString }?.tracks.orEmpty()
+        val shown = _opened.value?.takeIf { keepShownTracks && it.playlist.key == playlist.key }?.tracks.orEmpty()
         _opened.value = OpenedPlaylist(playlist, shown, isLoading = shown.isEmpty())
         openJob = viewModelScope.launch {
             val loaded = try {
@@ -76,7 +82,7 @@ class PlaylistsViewModel @Inject constructor(
                 Log.e(TAG, "Playlist load failed", e)
                 OpenedPlaylist(playlist, isLoading = false, failed = true)
             }
-            if (_opened.value?.playlist?.kindString == playlist.kindString) _opened.value = loaded
+            if (_opened.value?.playlist?.key == playlist.key) _opened.value = loaded
         }
     }
 
@@ -103,7 +109,7 @@ class PlaylistsViewModel @Inject constructor(
     /** Downloads the playlist for offline listening (in the background, survives closing the app). */
     fun download(playlist: UserPlaylistDto) {
         viewModelScope.launch {
-            downloadScheduler.downloadPlaylist(playlist.kindString)
+            downloadScheduler.downloadPlaylist(playlist.key)
             say(R.string.playlist_msg_download_started, playlist.title.orEmpty())
         }
     }
@@ -116,7 +122,7 @@ class PlaylistsViewModel @Inject constructor(
     /** Plays a whole playlist without opening it (car screen); shuffle mode applies as usual. */
     fun playPlaylist(playlist: UserPlaylistDto) {
         startJob?.cancel()
-        _starting.value = playlist.kindString
+        _starting.value = playlist.key
         startJob = viewModelScope.launch {
             try {
                 val tracks = repository.tracks(playlist)
@@ -132,7 +138,7 @@ class PlaylistsViewModel @Inject constructor(
                 Log.e(TAG, "Playlist start failed", e)
                 _messages.tryEmit(context.getString(R.string.playlist_msg_failed))
             } finally {
-                if (_starting.value == playlist.kindString) _starting.value = null
+                if (_starting.value == playlist.key) _starting.value = null
             }
         }
     }

@@ -29,6 +29,10 @@ class UserPlaylistsRepository @Inject constructor(
     private val _playlists = MutableStateFlow<List<UserPlaylistDto>>(emptyList())
     val playlists: StateFlow<List<UserPlaylistDto>> = _playlists.asStateFlow()
 
+    /** Other people's playlists the user liked (read-only here). */
+    private val _likedPlaylists = MutableStateFlow<List<UserPlaylistDto>>(emptyList())
+    val likedPlaylists: StateFlow<List<UserPlaylistDto>> = _likedPlaylists.asStateFlow()
+
     /** Serializes server refreshes and edits, so a refresh never overwrites a list mid-edit. */
     private val mutex = Mutex()
     private var loadedFolder: String? = null
@@ -42,6 +46,7 @@ class UserPlaylistsRepository @Inject constructor(
         if (loadedFolder == folder) return
         loadedFolder = folder
         _playlists.value = cacheManager.loadUserPlaylists(folder)
+        _likedPlaylists.value = cacheManager.loadLikedPlaylists(folder)
     }
 
     /** @return true when the list was updated from the server. */
@@ -54,6 +59,7 @@ class UserPlaylistsRepository @Inject constructor(
             _playlists.value = list
             loadedFolder = folder
             cacheManager.saveUserPlaylists(folder, list)
+            refreshLiked(folder)
             true
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
@@ -63,21 +69,44 @@ class UserPlaylistsRepository @Inject constructor(
         }
     }
 
+    /** Liked playlists; a failure keeps the cached list (the own list is already updated). */
+    private suspend fun refreshLiked(folder: String) {
+        try {
+            val liked = api.getLikedPlaylists(libraryRepository.resolveUid()).result.orEmpty()
+                .mapNotNull { it.playlist }
+                .filter { it.kindString.isNotEmpty() && it.ownerUidString.isNotEmpty() }
+                .map { it.copy(isLikedByUser = true, tracks = emptyList()) }
+            if (activeFolder != folder) return
+            _likedPlaylists.value = liked
+            cacheManager.saveLikedPlaylists(folder, liked)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e(TAG, "Liked playlists refresh failed", e)
+        }
+    }
+
+    /** A playlist by [UserPlaylistDto.key], own or liked. */
+    fun find(key: String): UserPlaylistDto? =
+        _playlists.value.firstOrNull { it.key == key } ?: _likedPlaylists.value.firstOrNull { it.key == key }
+
     /** Tracks in playlist order. Throws on a network error when nothing is cached for this revision. */
     suspend fun tracks(playlist: UserPlaylistDto): List<TrackDetailsDto> {
         val folder = activeFolder
-        val kind = playlist.kindString
-        cacheManager.loadPlaylistTracks(folder, kind, playlist.revision).takeIf { it.isNotEmpty() }?.let { return it }
+        // A liked playlist belongs to someone else: their uid, and a cache slot that cannot clash with an own kind
+        val cacheKind = playlist.key
+        cacheManager.loadPlaylistTracks(folder, cacheKind, playlist.revision).takeIf { it.isNotEmpty() }?.let { return it }
 
-        val full = api.getUserPlaylist(libraryRepository.resolveUid(), kind).result ?: return emptyList()
-        val tracks = resolveTracks(folder, full)
-        if (tracks.isNotEmpty()) cacheManager.savePlaylistTracks(folder, kind, full.revision, tracks)
+        val owner = if (playlist.isLikedByUser) playlist.ownerUidString else libraryRepository.resolveUid()
+        val full = api.getUserPlaylist(owner, playlist.kindString).result ?: return emptyList()
+        val tracks = resolveTracks(folder, full, cacheKind)
+        if (tracks.isNotEmpty()) cacheManager.savePlaylistTracks(folder, cacheKind, full.revision, tracks)
         return tracks
     }
 
     /** Track metadata of a playlist fetched with its track list: cached for that revision, else embedded + fetched. */
-    private suspend fun resolveTracks(folder: String, full: UserPlaylistDto): List<TrackDetailsDto> {
-        cacheManager.loadPlaylistTracks(folder, full.kindString, full.revision).takeIf { it.isNotEmpty() }?.let { return it }
+    private suspend fun resolveTracks(folder: String, full: UserPlaylistDto, cacheKind: String = full.kindString): List<TrackDetailsDto> {
+        cacheManager.loadPlaylistTracks(folder, cacheKind, full.revision).takeIf { it.isNotEmpty() }?.let { return it }
         val ids = full.tracks.mapNotNull { it.trackId }.distinct()
         val embedded = full.tracks.mapNotNull { it.track }.associateBy { it.idString }
         val fetched = libraryRepository.fetchMetadata(ids.filter { it !in embedded }).associateBy { it.idString }
@@ -227,6 +256,7 @@ class UserPlaylistsRepository @Inject constructor(
     fun resetForAccountChange() {
         loadedFolder = null
         _playlists.value = emptyList()
+        _likedPlaylists.value = emptyList()
     }
 
     enum class AddTrackResult { ADDED, ALREADY_THERE }

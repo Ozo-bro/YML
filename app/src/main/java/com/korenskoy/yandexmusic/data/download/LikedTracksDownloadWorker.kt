@@ -54,7 +54,7 @@ class LikedTracksDownloadWorker(
             // One of the user's playlists instead of the liked tracks
             val playlists = deps.playlistsRepository()
             playlists.loadCached()
-            val playlist = playlists.playlists.value.firstOrNull { it.kindString == playlistKind } ?: return Result.success()
+            val playlist = playlists.find(playlistKind) ?: return Result.success()
             try {
                 playlists.tracks(playlist)
             } catch (e: kotlinx.coroutines.CancellationException) {

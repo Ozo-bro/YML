@@ -480,7 +480,7 @@ private fun PlaylistsPage(
                 Text(stringResource(R.string.library_playlists_row), style = HiFiType.LargeTitle.copy(fontSize = 28.sp, lineHeight = 34.sp))
             }
         }
-        items(cells.chunked(columns), key = { row -> "pl_" + row.joinToString("|") { it?.kindString ?: "new" } }, contentType = { "playlist_row" }) { row ->
+        items(cells.chunked(columns), key = { row -> "pl_" + row.joinToString("|") { it?.key ?: "new" } }, contentType = { "playlist_row" }) { row ->
             Row(Modifier.fillMaxWidth().padding(bottom = 18.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 row.forEach { playlist ->
                     Column(

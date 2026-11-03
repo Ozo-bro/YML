@@ -86,7 +86,7 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew testDebugUnitTest --no-daemon -Proborazzi.test.record=true \
-            --tests "*PlaybackQueueTest" --tests "*HiFiLogicTest" --tests "*CarSplitScreenshotTest"
+            --tests "*PlaybackQueueTest" --tests "*HiFiLogicTest" --tests "*LyricsTest" --tests "*CarSplitScreenshotTest"
       - name: Publish car screens to the ci-screens branch (for review)
         if: always()
         env:

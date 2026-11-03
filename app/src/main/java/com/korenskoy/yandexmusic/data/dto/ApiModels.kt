@@ -146,10 +146,21 @@ data class UserPlaylistDto(
     @SerialName("cover") val cover: PlaylistCoverDto? = null,
     @SerialName("ogImage") val ogImage: String? = null,
     @SerialName("visibility") val visibility: String? = null,
-    @SerialName("tracks") val tracks: List<PlaylistTrackDto> = emptyList()
+    @SerialName("tracks") val tracks: List<PlaylistTrackDto> = emptyList(),
+    /** Owner's uid: set on every playlist; matters for someone else's playlist the user liked. */
+    @SerialName("uid") val ownerUid: JsonElement? = null,
+    /** Set by the app (never by the server) on playlists from the user's "liked playlists". */
+    @SerialName("ymlLikedByUser") val isLikedByUser: Boolean = false
 ) {
     val isPublic: Boolean
         get() = visibility == "public"
+
+    val ownerUidString: String
+        get() = (ownerUid as? kotlinx.serialization.json.JsonPrimitive)?.content.orEmpty()
+
+    /** Unique across own and liked playlists (kinds are only unique per owner). */
+    val key: String
+        get() = if (isLikedByUser) "${ownerUidString}_$kindString" else kindString
 
     val kindString: String
         get() = (kind as? kotlinx.serialization.json.JsonPrimitive)?.content.orEmpty()
@@ -158,6 +169,18 @@ data class UserPlaylistDto(
     val coverUri: String?
         get() = cover?.uri ?: cover?.itemsUri?.firstOrNull() ?: ogImage
 }
+
+/** tracks/{id}/lyrics: where the lyrics file (LRC or plain text) can be downloaded. */
+@Serializable
+data class LyricsInfoDto(
+    @SerialName("downloadUrl") val downloadUrl: String? = null
+)
+
+/** An entry of users/{uid}/likes/playlists. */
+@Serializable
+data class LikedPlaylistDto(
+    @SerialName("playlist") val playlist: UserPlaylistDto? = null
+)
 
 @Serializable
 data class PlaylistCoverDto(

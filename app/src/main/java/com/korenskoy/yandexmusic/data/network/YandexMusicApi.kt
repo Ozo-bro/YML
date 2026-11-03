@@ -56,6 +56,19 @@ interface YandexMusicApi {
         @Path("userId") userId: String
     ): ResponseWrapper<List<com.korenskoy.yandexmusic.data.dto.UserPlaylistDto>>
 
+    @GET("tracks/{trackId}/lyrics")
+    suspend fun getLyrics(
+        @Path("trackId") trackId: String,
+        @retrofit2.http.Query("format") format: String,
+        @retrofit2.http.Query("timeStamp") timeStamp: Long,
+        @retrofit2.http.Query("sign") sign: String
+    ): ResponseWrapper<com.korenskoy.yandexmusic.data.dto.LyricsInfoDto>
+
+    @GET("users/{userId}/likes/playlists")
+    suspend fun getLikedPlaylists(
+        @Path("userId") userId: String
+    ): ResponseWrapper<List<com.korenskoy.yandexmusic.data.dto.LikedPlaylistDto>>
+
     @GET("users/{userId}/playlists/{kind}")
     suspend fun getUserPlaylist(
         @Path("userId") userId: String,

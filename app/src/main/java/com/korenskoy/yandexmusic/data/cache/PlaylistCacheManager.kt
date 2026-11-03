@@ -55,6 +55,14 @@ class PlaylistCacheManager @Inject constructor(
     suspend fun saveUserPlaylists(userFolder: String, playlists: List<UserPlaylistDto>) =
         putValue(sanitizeUserFolder(userFolder), USER_PLAYLISTS, json.encodeToString(playlists))
 
+    suspend fun saveLikedPlaylists(userFolder: String, playlists: List<UserPlaylistDto>) =
+        putValue(sanitizeUserFolder(userFolder), LIKED_PLAYLISTS, json.encodeToString(playlists))
+
+    suspend fun loadLikedPlaylists(userFolder: String): List<UserPlaylistDto> =
+        getValue(sanitizeUserFolder(userFolder), LIKED_PLAYLISTS)
+            ?.let { runCatching { json.decodeFromString<List<UserPlaylistDto>>(it) }.getOrNull() }
+            .orEmpty()
+
     suspend fun loadUserPlaylists(userFolder: String): List<UserPlaylistDto> =
         getValue(sanitizeUserFolder(userFolder), USER_PLAYLISTS)
             ?.let { runCatching { json.decodeFromString<List<UserPlaylistDto>>(it) }.getOrNull() }
@@ -224,6 +232,7 @@ class PlaylistCacheManager @Inject constructor(
         const val POPULAR = "popular"
         const val LIKES_REVISION = "likes_revision"
         const val USER_PLAYLISTS = "user_playlists"
+        const val LIKED_PLAYLISTS = "liked_playlists"
         val LEGACY_PLAYLIST = Regex("""playlist_(.+)_(\d+)\.json""")
 
         fun playlistList(kind: String) = "playlist:$kind"

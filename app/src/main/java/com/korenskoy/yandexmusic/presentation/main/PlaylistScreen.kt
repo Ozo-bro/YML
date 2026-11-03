@@ -193,7 +193,8 @@ fun PlaylistScreen(
                         .padding(horizontal = 12.dp, vertical = 8.dp)
                 )
             }
-            if (editedOrder == null) Box {
+            // Someone else's playlist (liked): nothing to edit
+            if (editedOrder == null && !playlist.isLikedByUser) Box {
                 Box(
                     modifier = Modifier
                         .size(40.dp)
@@ -307,7 +308,7 @@ fun PlaylistScreen(
         Spacer(modifier = Modifier.height(12.dp))
 
         // The menu of a track listed here also offers "remove from playlist"
-        CompositionLocalProvider(LocalTrackMenuPlaylist provides playlist) {
+        CompositionLocalProvider(LocalTrackMenuPlaylist provides playlist.takeUnless { it.isLikedByUser }) {
             val order = editedOrder
             when {
                 order != null -> ReorderList(

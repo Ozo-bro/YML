@@ -117,7 +117,7 @@ class HiFiLogicTest {
     fun dockLightsThePlayingSource() {
         assertEquals(CarSource.WAVE, carSourceOf(PlaylistSource.VIBE, isRadio = false))
         assertEquals(CarSource.LIKED, carSourceOf(PlaylistSource.LIBRARY, false))
-        assertEquals(CarSource.HITS, carSourceOf(PlaylistSource.TRENDS, false))
+        assertEquals("hits are not in the dock", null, carSourceOf(PlaylistSource.TRENDS, false))
         assertEquals("a radio stream lights no tile", null, carSourceOf(PlaylistSource.VIBE, true))
         assertNull(carSourceOf(PlaylistSource.SEARCH, false))
         assertNull(carSourceOf(PlaylistSource.NONE, false))

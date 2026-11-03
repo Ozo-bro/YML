@@ -71,7 +71,8 @@ fun MainScreen(
     playlistsVm: PlaylistsViewModel = androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel(),
     updateVm: com.korenskoy.yandexmusic.presentation.update.UpdateViewModel = androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel(),
     catalogVm: com.korenskoy.yandexmusic.presentation.catalog.CatalogViewModel = androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel(),
-    crashVm: com.korenskoy.yandexmusic.presentation.crash.CrashLogViewModel = androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel()
+    crashVm: com.korenskoy.yandexmusic.presentation.crash.CrashLogViewModel = androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel(),
+    lyricsVm: com.korenskoy.yandexmusic.presentation.lyrics.LyricsViewModel = androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel()
 ) {
     val tracks by viewModel.tracks.collectAsState()
     val allAccounts by accountVm.allAccounts.collectAsState()
@@ -107,9 +108,12 @@ fun MainScreen(
     val streamQuality by viewModel.streamQuality.collectAsState()
     val sleepTimer by viewModel.sleepTimer.collectAsState()
     val userPlaylists by playlistsVm.playlists.collectAsState()
+    val allPlaylists by playlistsVm.allPlaylists.collectAsState()
     val openedPlaylist by playlistsVm.opened.collectAsState()
     val startingPlaylistKind by playlistsVm.starting.collectAsState()
     val shuffleEnabled by viewModel.shuffleEnabled.collectAsState()
+    val lyricsState by lyricsVm.state.collectAsState()
+    val showLyrics by lyricsVm.showLyrics.collectAsState()
     val steeringWheelOnLeft by viewModel.steeringWheelOnLeft.collectAsState()
     val uiScaleAuto by viewModel.uiScaleAuto.collectAsState()
     val uiScaleManual by viewModel.uiScaleManual.collectAsState()
@@ -331,7 +335,7 @@ fun MainScreen(
                         onAccountManagementClick = { showAccountDialog = true },
                         onAddAccount = { onNavigateToAuth() },
                         onLogout = { accountVm.logoutCurrentAccount() },
-                        playlists = userPlaylists,
+                        playlists = allPlaylists,
                         openedPlaylist = openedPlaylist,
                         onOpenPlaylist = { playlistsVm.open(it) },
                         onClosePlaylist = { playlistsVm.close() },
@@ -374,12 +378,15 @@ fun MainScreen(
                             nextTrack = if (currentTrack?.isRadio == true) null else upcoming.firstOrNull(),
                             source = currentSource,
                             isBuffering = isBuffering,
-                            playlists = userPlaylists,
+                            playlists = allPlaylists,
                             startingPlaylistKind = startingPlaylistKind,
                             onPlayPlaylist = { playlistsVm.playPlaylist(it) },
                             onOpenPlaylists = { playlistsVm.refresh() },
                             shuffleEnabled = shuffleEnabled,
-                            onToggleShuffle = { viewModel.toggleShuffle() }
+                            onToggleShuffle = { viewModel.toggleShuffle() },
+                            lyrics = lyricsState.lyrics?.takeIf { lyricsState.trackId == currentTrack?.idString },
+                            showLyrics = showLyrics,
+                            onToggleLyrics = { lyricsVm.toggleShowLyrics() }
                         )
                     }
                 }
