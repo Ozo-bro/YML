@@ -8,7 +8,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
@@ -107,7 +107,7 @@ class CarSplitScreenshotTest {
     private fun snap(name: String) = compose.onRoot().captureRoboImage("build/outputs/split-screens/$name.png")
 
     private fun openPlaylists() {
-        compose.onNodeWithText("Плейлисты").performClick()
+        compose.onNodeWithContentDescription("Плейлисты").performClick()
         frames()
     }
 

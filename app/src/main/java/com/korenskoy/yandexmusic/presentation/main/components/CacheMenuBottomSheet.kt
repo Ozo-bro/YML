@@ -40,6 +40,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.Login
 import androidx.compose.material.icons.automirrored.rounded.Logout
+import androidx.compose.material.icons.rounded.Waves
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.Download
@@ -123,6 +124,9 @@ fun CacheMenuBottomSheet(
     onLogout: () -> Unit = {},
     crossfadeSeconds: Int = 3,
     onCrossfadeChange: (Int) -> Unit = {},
+    waveCacheLimitMb: Int = 0,
+    waveCacheUsedBytes: Long = 0L,
+    onWaveCacheLimitChange: (Int) -> Unit = {},
     steeringWheelOnLeft: Boolean = true,
     onSteeringWheelChange: (Boolean) -> Unit = {},
     uiScaleAuto: Boolean = true,
@@ -252,6 +256,27 @@ fun CacheMenuBottomSheet(
                                 onClick = { onEnableAutoDownload(!autoDownloadEnabled) },
                                 trailing = { HiFiSwitch(checked = autoDownloadEnabled, onCheckedChange = onEnableAutoDownload) }
                             )
+                            SegmentedRow(Icons.Rounded.Waves, stringResource(R.string.settings_wave_cache)) {
+                                val limits = com.korenskoy.yandexmusic.domain.repository.SettingsRepository.WAVE_CACHE_LIMITS_MB
+                                HiFiSegmented(
+                                    options = limits.map { mb ->
+                                        when {
+                                            mb == 0 -> stringResource(R.string.settings_wave_cache_off)
+                                            mb < 1024 -> "0,5 ГБ"
+                                            else -> "${mb / 1024} ГБ"
+                                        }
+                                    },
+                                    selectedIndex = limits.indexOf(waveCacheLimitMb).coerceAtLeast(0),
+                                    onSelect = { onWaveCacheLimitChange(limits[it]) }
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    stringResource(R.string.settings_wave_cache_hint) + ". " +
+                                        stringResource(R.string.settings_wave_cache_used, formatSize(waveCacheUsedBytes)),
+                                    color = Color.White.copy(alpha = 0.6f),
+                                    fontSize = 13.sp
+                                )
+                            }
                             SettingsRow(icon = Icons.Rounded.CloudDownload, title = stringResource(R.string.settings_download_all), onClick = {
                                 onDownloadAllClick()
                                 close()

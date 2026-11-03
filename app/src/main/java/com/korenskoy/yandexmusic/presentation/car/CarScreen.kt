@@ -118,6 +118,7 @@ fun carSourceOf(source: PlaylistSource, isRadio: Boolean): CarSource? = when {
     source == PlaylistSource.VIBE -> CarSource.WAVE
     source == PlaylistSource.LIBRARY -> CarSource.LIKED
     source == PlaylistSource.PLAYLIST -> CarSource.PLAYLISTS
+    source == PlaylistSource.OFFLINE -> CarSource.DOWNLOADED
     else -> null
 }
 
@@ -200,6 +201,7 @@ fun CarScreen(
         CarSource.WAVE -> stringResource(R.string.car_source_wave)
         CarSource.LIKED -> stringResource(R.string.library_liked)
         CarSource.PLAYLISTS -> if (showPlaylists) "" else stringResource(R.string.car_source_playlists)
+        CarSource.DOWNLOADED -> stringResource(R.string.car_source_downloaded)
         else -> ""
     }
     val coverUrl = currentTrack?.coverUri.toCoverUrl("400x400")
@@ -448,7 +450,8 @@ private fun DriverPanel(
         // The gauge cluster sits midway between the title and the dock, so no empty band is left above the dock
         Spacer(Modifier.weight(1f))
         // The gauge cluster; in portrait (560 wide) the side controls shrink so all five fit
-        val sideSize = if (compactDock) 64f else 72f
+        // Big enough to hit without looking (like/dislike included)
+        val sideSize = if (compactDock) 72f else 84f
         val skipSize = if (compactDock) 88f else 96f
         Row(
             Modifier.fillMaxWidth().height(u(240f)).padding(top = u(0f)),
@@ -456,7 +459,7 @@ private fun DriverPanel(
             verticalAlignment = Alignment.CenterVertically
         ) {
             GlassRound(u(sideSize), stringResource(R.string.cd_ne_nravitsya), onDislike) {
-                Icon(Icons.Rounded.HeartBroken, contentDescription = null, tint = Color.White.copy(alpha = 0.88f), modifier = Modifier.size(u(28f)))
+                Icon(Icons.Rounded.HeartBroken, contentDescription = null, tint = Color.White.copy(alpha = 0.88f), modifier = Modifier.size(u(34f)))
             }
             HiFiKnob(onClick = onPrev, contentDescription = stringResource(R.string.cd_predyduschiy_trek), size = u(skipSize)) {
                 Icon(Icons.Rounded.SkipPrevious, contentDescription = null, tint = Color(0xFFF4F6FA), modifier = Modifier.size(u(38f)))
@@ -483,7 +486,7 @@ private fun DriverPanel(
                     if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                     contentDescription = null,
                     tint = if (isLiked) HiFi.Accent else Color.White.copy(alpha = 0.88f),
-                    modifier = Modifier.size(u(28f))
+                    modifier = Modifier.size(u(34f))
                 )
             }
         }
@@ -494,11 +497,11 @@ private fun DriverPanel(
         ) {
             if (isRadio) LiveReadout(u) else TimeReadout(u, progress, durationMs)
             if (showShuffle) {
-                Spacer(Modifier.width(u(16f)))
+                Spacer(Modifier.width(u(20f)))
                 ToggleRound(u, Icons.Rounded.Shuffle, shuffleEnabled, stringResource(if (shuffleEnabled) R.string.car_shuffle_on else R.string.car_shuffle_off), onToggleShuffle)
             }
             if (hasLyrics) {
-                Spacer(Modifier.width(u(16f)))
+                Spacer(Modifier.width(u(20f)))
                 ToggleRound(u, Icons.Rounded.Subtitles, lyricsShown, stringResource(if (lyricsShown) R.string.car_lyrics_hide else R.string.car_lyrics_show), onToggleLyrics)
             }
         }
@@ -545,7 +548,7 @@ private fun LiveReadout(u: Scale) {
 private fun ToggleRound(u: Scale, icon: ImageVector, enabled: Boolean, description: String, onClick: () -> Unit) {
     Box(
         Modifier
-            .size(u(56f))
+            .size(u(80f))
             .then(
                 if (enabled) Modifier.clip(CircleShape).background(HiFi.Accent.copy(alpha = 0.28f)).border(1.dp, HiFi.Accent, CircleShape)
                 else Modifier.hifiGlass(CircleShape, fill = Color.White.copy(alpha = 0.06f), border = Color.White.copy(alpha = 0.14f))
@@ -558,7 +561,7 @@ private fun ToggleRound(u: Scale, icon: ImageVector, enabled: Boolean, descripti
             icon,
             contentDescription = null,
             tint = if (enabled) Color.White else Color.White.copy(alpha = 0.70f),
-            modifier = Modifier.size(u(28f))
+            modifier = Modifier.size(u(38f))
         )
     }
 }
@@ -723,7 +726,7 @@ private fun GlassRound(size: Dp, description: String, onClick: () -> Unit, conte
     ) { content() }
 }
 
-/** Five big source tiles; the playing one is dark metal with a steel rim. */
+/** Big icon tiles of the sources; the playing one is dark metal with a steel rim. */
 @Composable
 private fun Dock(u: Scale, items: List<DockItem>, active: CarSource?, compact: Boolean) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(u(12f))) {
@@ -738,20 +741,13 @@ private fun Dock(u: Scale, items: List<DockItem>, active: CarSource?, compact: B
                         if (selected) Modifier.shadow(u(14f), shape).hifiAnodized(shape)
                         else Modifier.hifiGlass(shape, fill = Color.White.copy(alpha = 0.06f), border = Color.White.copy(alpha = 0.10f))
                     )
-                    .clickable(role = Role.Button, onClick = item.onClick),
+                    .clickable(role = Role.Button, onClickLabel = item.label, onClick = item.onClick)
+                    .semantics { contentDescription = item.label },
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                Icon(item.icon, contentDescription = null, tint = if (selected) Color.White else Color.White.copy(alpha = 0.86f), modifier = Modifier.size(u(28f)))
-                Spacer(Modifier.height(u(8f)))
-                Text(
-                    item.label,
-                    color = if (selected) Color.White else Color.White.copy(alpha = 0.86f),
-                    fontSize = u.sp(16f),
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                // Icons only: big and obvious at a glance; the label stays for accessibility
+                Icon(item.icon, contentDescription = null, tint = if (selected) Color.White else Color.White.copy(alpha = 0.86f), modifier = Modifier.size(u(44f)))
             }
         }
     }

@@ -3,8 +3,10 @@ package com.korenskoy.yandexmusic.data.player
 /** Where the current queue came from. */
 enum class PlaylistSource {
     LIBRARY, VIBE, SEARCH, TRENDS, RADIO, NONE,
-    /** One of the user's own playlists. Kept last: the name is persisted in the session file. */
-    PLAYLIST
+    /** One of the user's own playlists. New values go last: the name is persisted in the session file. */
+    PLAYLIST,
+    /** No connection: the downloaded tracks (liked + offline wave); back to My Wave once online. */
+    OFFLINE
 }
 
 /** Sleep timer: either a moment in [android.os.SystemClock.elapsedRealtime] time or "at the end of this track". */

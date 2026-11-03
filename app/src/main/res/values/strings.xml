@@ -236,6 +236,11 @@
     <string name="car_shuffle_off">Перемешивание выключено</string>
     <string name="car_lyrics_show">Показать текст песни</string>
     <string name="car_lyrics_hide">Показать обложку</string>
+    <string name="msg_back_online_wave">Интернет появился: снова Моя волна</string>
+    <string name="settings_wave_cache">Офлайн-волна</string>
+    <string name="settings_wave_cache_hint">Пока играет Моя волна, следующие треки сохраняются сами. Без интернета играют они и скачанные «Мне нравится»</string>
+    <string name="settings_wave_cache_off">Выкл</string>
+    <string name="settings_wave_cache_used">Сейчас занято: %1$s</string>
     <string name="car_source_downloaded">Скачанные</string>
     <string name="car_exit">Выйти из режима В авто</string>
     <string name="car_time_elapsed_remaining">Прошло %1$s, осталось %2$s</string>

@@ -37,7 +37,8 @@ class MainViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val libraryRepository: LibraryRepository,
     private val downloadManager: TrackDownloadManager,
-    private val downloadScheduler: DownloadScheduler
+    private val downloadScheduler: DownloadScheduler,
+    waveCache: com.korenskoy.yandexmusic.data.download.WaveCache
 ) : ViewModel() {
 
     val isAuthorized = authRepository.isAuthorized()
@@ -69,6 +70,9 @@ class MainViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, SettingsRepository.DEFAULT_UI_SCALE)
     val crossfadeSeconds: StateFlow<Int> = settingsRepository.crossfadeSeconds
         .stateIn(viewModelScope, SharingStarted.Eagerly, SettingsRepository.DEFAULT_CROSSFADE_SECONDS)
+    val waveCacheLimitMb: StateFlow<Int> = settingsRepository.waveCacheLimitMb
+        .stateIn(viewModelScope, SharingStarted.Eagerly, SettingsRepository.DEFAULT_WAVE_CACHE_LIMIT_MB)
+    val waveCacheUsedBytes: StateFlow<Long> = waveCache.usedBytes
 
     // endregion
 
@@ -175,6 +179,10 @@ class MainViewModel @Inject constructor(
     /** What plays now and what the server offered, for the quality details in the player. */
     fun qualityDetails() = playbackController.qualityDetails()
 
+    fun setWaveCacheLimitMb(limitMb: Int) {
+        viewModelScope.launch { settingsRepository.setWaveCacheLimitMb(limitMb) }
+    }
+
     fun setCrossfadeSeconds(seconds: Int) {
         viewModelScope.launch { settingsRepository.setCrossfadeSeconds(seconds) }
     }
@@ -194,6 +202,7 @@ class MainViewModel @Inject constructor(
 
     fun shuffleLikedTracks() = playbackController.playAllLikedTracks(shuffle = true)
     fun toggleShuffle() = playbackController.toggleShuffle()
+    fun playDownloaded() = playbackController.playDownloaded()
 
     fun playHits(shuffle: Boolean = true) = playbackController.playHits(libraryRepository.weeklyHits.value, shuffle)
 

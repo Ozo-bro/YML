@@ -62,6 +62,15 @@ class SettingsRepositoryImpl @Inject constructor(
         context.dataStore.edit { prefs -> prefs[SHUFFLE_ENABLED_KEY] = enabled }
     }
 
+    private val WAVE_CACHE_LIMIT_KEY = androidx.datastore.preferences.core.intPreferencesKey("wave_cache_limit_mb")
+    override val waveCacheLimitMb: Flow<Int> = context.dataStore.data.map { prefs ->
+        prefs[WAVE_CACHE_LIMIT_KEY] ?: SettingsRepository.DEFAULT_WAVE_CACHE_LIMIT_MB
+    }
+
+    override suspend fun setWaveCacheLimitMb(limitMb: Int) {
+        context.dataStore.edit { prefs -> prefs[WAVE_CACHE_LIMIT_KEY] = limitMb }
+    }
+
     private val SHOW_LYRICS_KEY = booleanPreferencesKey("show_lyrics")
     override val showLyrics: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[SHOW_LYRICS_KEY] ?: true

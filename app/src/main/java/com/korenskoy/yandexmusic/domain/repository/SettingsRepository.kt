@@ -22,6 +22,8 @@ interface SettingsRepository {
     val shuffleEnabled: Flow<Boolean>
     /** Show the lyrics (instead of the cover) whenever the track has them. */
     val showLyrics: Flow<Boolean>
+    /** Offline wave: size limit of the auto-saved My Wave tracks in MB; 0 turns it off. */
+    val waveCacheLimitMb: Flow<Int>
 
     suspend fun setDarkTheme(enabled: Boolean)
     suspend fun setAutoDownloadLikedTracks(enabled: Boolean)
@@ -33,9 +35,13 @@ interface SettingsRepository {
     suspend fun setUiScaleManual(scale: Float)
     suspend fun setShuffleEnabled(enabled: Boolean)
     suspend fun setShowLyrics(enabled: Boolean)
+    suspend fun setWaveCacheLimitMb(limitMb: Int)
 
     companion object {
         const val DEFAULT_CROSSFADE_SECONDS = 3
+        /** Offline wave choices (MB) and the default (1 GB). */
+        val WAVE_CACHE_LIMITS_MB = listOf(0, 512, 1024, 2048, 4096)
+        const val DEFAULT_WAVE_CACHE_LIMIT_MB = 1024
         const val MAX_CROSSFADE_SECONDS = 12
         /** Left-hand drive is the global majority, so it is the default. */
         const val DEFAULT_STEERING_WHEEL_ON_LEFT = true

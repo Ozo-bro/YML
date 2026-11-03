@@ -37,6 +37,7 @@ class LikedTracksDownloadWorker(
     interface Dependencies {
         fun libraryRepository(): LibraryRepository
         fun playlistsRepository(): com.korenskoy.yandexmusic.data.repository.UserPlaylistsRepository
+        fun waveCache(): WaveCache
         fun downloadManager(): TrackDownloadManager
         fun preloadManager(): TrackPreloadManager
     }
@@ -65,6 +66,8 @@ class LikedTracksDownloadWorker(
         } else {
             library.likedTracks.value
         }
+        // Downloaded by hand from now on: the offline wave must never evict these
+        deps.waveCache().promote(source.filter { single == null || it.idString == single }.map { it.idString })
         val tracks = source
             .filter { single == null || it.idString == single }
             .filter { downloads.isTrackDownloaded(it.idString) == upgrade }

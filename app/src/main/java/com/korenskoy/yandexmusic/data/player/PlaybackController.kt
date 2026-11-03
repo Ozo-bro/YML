@@ -62,7 +62,8 @@ class PlaybackController @Inject constructor(
     private val radioRepository: RadioRepository,
     private val stateStore: PlaybackStateStore,
     private val settingsRepository: com.korenskoy.yandexmusic.domain.repository.SettingsRepository,
-    private val networkMonitor: com.korenskoy.yandexmusic.data.network.NetworkMonitor
+    private val networkMonitor: com.korenskoy.yandexmusic.data.network.NetworkMonitor,
+    private val waveCache: com.korenskoy.yandexmusic.data.download.WaveCache
 ) {
     private val scope = CoroutineScope(
         SupervisorJob() + Dispatchers.Main.immediate + CoroutineExceptionHandler { _, e ->
@@ -244,6 +245,10 @@ class PlaybackController @Inject constructor(
         recordTrackPlayed(trackId)
 
         val currentIndex = playlist.indexOfFirst { it.idString == trackId }
+        // Offline wave: save the next wave tracks while there is a connection
+        if (_currentSource.value == PlaylistSource.VIBE && !isOffline()) {
+            waveCache.prefetch(playlist.drop(currentIndex + 1).take(2))
+        }
         val upcoming = playlist.drop(currentIndex + 1).take(3).map { it.idString }
         if (upcoming.isNotEmpty()) preloadManager.preloadTracks(upcoming)
         playlist.getOrNull(currentIndex + 1)?.let { prepareStandby(it) }
@@ -375,6 +380,18 @@ class PlaybackController @Inject constructor(
         }
         if (current.isRadio) {
             stepRadioStation(current, +1)
+            return
+        }
+
+        // Back online after the offline mix: the wave again, from the next track
+        if (_currentSource.value == PlaylistSource.OFFLINE && !isOffline()) {
+            showMessage(context.getString(R.string.msg_back_online_wave))
+            playMyVibe()
+            return
+        }
+        // The connection dropped in the wave: the next saved track, else the offline mix (no waiting on timeouts)
+        if (_currentSource.value == PlaylistSource.VIBE && isOffline()) {
+            skipToNextDownloaded(current)
             return
         }
 
@@ -678,20 +695,26 @@ class PlaybackController @Inject constructor(
 
     private fun isOffline(): Boolean = !networkMonitor.isCurrentlyConnected()
 
+    /** Downloaded liked tracks plus the offline wave, without repeats. */
     private fun downloadedLibrary(): List<TrackDetailsDto> =
-        libraryTracks.filter { downloadManager.isKnownDownloaded(it.idString) }
+        (libraryTracks + waveCache.tracks.value)
+            .distinctBy { it.idString }
+            .filter { downloadManager.isKnownDownloaded(it.idString) }
 
-    /** No network: play the downloaded liked tracks, shuffled, like Apple Music's offline library. */
-    private fun playOfflineMix() {
+    /** No network: play everything downloaded, shuffled; the wave comes back once online. */
+    private fun playOfflineMix(announce: Boolean = true) {
         val offline = downloadedLibrary().shuffled()
         if (offline.isEmpty()) {
             _isStarting.value = false
             showMessage(context.getString(R.string.msg_offline_no_downloads))
             return
         }
-        showMessage(context.getString(R.string.msg_offline_playing_downloaded))
-        playTrack(offline.first().idString, offline, PlaylistSource.LIBRARY)
+        if (announce) showMessage(context.getString(R.string.msg_offline_playing_downloaded))
+        playTrack(offline.first().idString, offline, PlaylistSource.OFFLINE)
     }
+
+    /** "Скачанные" in the car: everything downloaded, online or not. */
+    fun playDownloaded() = playOfflineMix(announce = isOffline())
 
     /** Next downloaded track after [from] in the current queue, otherwise the offline mix. */
     private fun skipToNextDownloaded(from: TrackDetailsDto) {

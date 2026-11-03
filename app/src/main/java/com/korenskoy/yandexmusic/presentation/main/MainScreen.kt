@@ -105,6 +105,8 @@ fun MainScreen(
     val isSignatureMismatch by updateVm.isSignatureMismatch.collectAsState()
     val isFetchingMoreQueue by viewModel.isFetchingMoreQueue.collectAsState()
     val crossfadeSeconds by viewModel.crossfadeSeconds.collectAsState()
+    val waveCacheLimitMb by viewModel.waveCacheLimitMb.collectAsState()
+    val waveCacheUsedBytes by viewModel.waveCacheUsedBytes.collectAsState()
     val streamQuality by viewModel.streamQuality.collectAsState()
     val sleepTimer by viewModel.sleepTimer.collectAsState()
     val userPlaylists by playlistsVm.playlists.collectAsState()
@@ -312,6 +314,9 @@ fun MainScreen(
                         },
                         crossfadeSeconds = crossfadeSeconds,
                         onCrossfadeChange = { viewModel.setCrossfadeSeconds(it) },
+                        waveCacheLimitMb = waveCacheLimitMb,
+                        waveCacheUsedBytes = waveCacheUsedBytes,
+                        onWaveCacheLimitChange = { viewModel.setWaveCacheLimitMb(it) },
                         steeringWheelOnLeft = steeringWheelOnLeft,
                         onSteeringWheelChange = { viewModel.setSteeringWheelOnLeft(it) },
                         uiScaleAuto = uiScaleAuto,
@@ -363,12 +368,7 @@ fun MainScreen(
                             onPlayMyVibe = { viewModel.playMyVibe() },
                             onPlayFavorites = { viewModel.playAllLikedTracks() },
                             onPlayHits = { viewModel.playHits(shuffle = true) },
-                            onPlayDownloaded = {
-                                val downloaded = tracks.filter { downloadedTrackIds.contains(it.idString) }
-                                if (downloaded.isNotEmpty()) {
-                                    viewModel.playTrack(downloaded.first().idString, downloaded, PlaylistSource.LIBRARY)
-                                }
-                            },
+                            onPlayDownloaded = { viewModel.playDownloaded() },
                             onExit = { currentTab = MainTab.HOME },
                             isLandscape = isLandscape,
                             steeringWheelOnLeft = steeringWheelOnLeft,
