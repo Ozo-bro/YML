@@ -142,17 +142,15 @@ private object Flat {
     val AccentSoft = Color(0x383D8BFF)
 }
 
-/** What takes the cover's place on the far side. */
-private enum class Panel { NONE, PLAYLISTS, QUEUE }
-
 /**
  * "В авто": a flat, low-cost layout for a head unit, also in a split window next to the navigator.
- * The driver's side has the title, a seek bar, three big pill buttons and a bar of toggles; the far
- * side has the cover (or the lyrics, playlists, queue) over the source tiles. Laid out in design units
- * scaled to the window, mirrored for right-hand drive.
+ * The driver's side holds what plays now: the cover with the title and the like/dislike pair, a seek
+ * bar and one row of controls (shuffle · previous · play · next · repeat). The far side always holds
+ * the lyrics or the queue (a tab switch; the playlists picker takes its place on demand) over the
+ * source tiles. Laid out in design units scaled to the window, mirrored for right-hand drive.
  *
- * [progress] is read where it is drawn (bar) or once a second (times), so the screen is not recomposed
- * on every progress tick.
+ * [progress] is read where it is drawn (bar, lyrics) or once a second (times), so the screen is not
+ * recomposed on every progress tick.
  */
 @Composable
 fun CarScreen(
@@ -193,8 +191,8 @@ fun CarScreen(
     onQueueTrackClick: (String) -> Unit = {}
 ) {
     androidx.activity.compose.BackHandler(onBack = onExit)
-    var panel by remember { mutableStateOf(Panel.NONE) }
-    androidx.activity.compose.BackHandler(enabled = panel != Panel.NONE) { panel = Panel.NONE }
+    var showPlaylists by remember { mutableStateOf(false) }
+    androidx.activity.compose.BackHandler(enabled = showPlaylists) { showPlaylists = false }
     val view = androidx.compose.ui.platform.LocalView.current
     DisposableEffect(Unit) {
         view.keepScreenOn = true
@@ -207,7 +205,7 @@ fun CarScreen(
     val playPause = { if (!isPlaying && currentTrack == null) onPlayMyVibe() else onPlayPauseClick() }
     val isRadio = currentTrack?.isRadio == true
     val playing = carSourceOf(source, isRadio)
-    val active = if (panel == Panel.PLAYLISTS) CarSource.PLAYLISTS else playing
+    val active = if (showPlaylists) CarSource.PLAYLISTS else playing
     val sourceLabel = when (playing) {
         CarSource.WAVE -> stringResource(R.string.car_source_wave)
         CarSource.LIKED -> stringResource(R.string.library_liked)
@@ -216,14 +214,15 @@ fun CarScreen(
         null -> ""
     }
     val showShuffle = currentTrack != null && !isRadio && PlaybackQueue.shuffleApplies(source)
-    val lyricsShown = lyrics != null && showLyrics
-    val pickPlaylist: (UserPlaylistDto) -> Unit = { onPlayPlaylist(it); panel = Panel.NONE }
+    // The text tab when the track has lyrics and the user keeps it (the remembered choice), else the queue
+    val lyricsTab = lyrics != null && showLyrics
+    val pickPlaylist: (UserPlaylistDto) -> Unit = { onPlayPlaylist(it); showPlaylists = false }
     val sources = listOf(
         SourceItem(CarSource.WAVE, Icons.Rounded.Waves, stringResource(R.string.car_source_wave), onPlayMyVibe),
         SourceItem(CarSource.LIKED, Icons.Rounded.Favorite, stringResource(R.string.car_source_liked), onPlayFavorites),
         SourceItem(CarSource.PLAYLISTS, Icons.AutoMirrored.Rounded.QueueMusic, stringResource(R.string.car_source_playlists)) {
-            panel = if (panel == Panel.PLAYLISTS) Panel.NONE else Panel.PLAYLISTS
-            if (panel == Panel.PLAYLISTS) onOpenPlaylists()
+            showPlaylists = !showPlaylists
+            if (showPlaylists) onOpenPlaylists()
         },
         SourceItem(CarSource.DOWNLOADED, Icons.Rounded.DownloadDone, stringResource(R.string.car_source_downloaded), onPlayDownloaded)
     )
@@ -239,23 +238,24 @@ fun CarScreen(
             }
             .pointerInput(Unit) { detectTapGestures(onDoubleTap = { playPause() }) }
     ) {
-        // Landscape needs 1100 units across (driver side + a 360 cover) and 720 down: a narrower split
-        // window keeps the height and the cover gives up width
-        val s = if (isLandscape) minOf(maxWidth / 1100.dp, maxHeight / 720.dp) else minOf(maxWidth / 600.dp, maxHeight / 1060.dp)
+        // Landscape needs 1060 units across (driver side + a 380 side panel) and 720 down: a narrower
+        // split window keeps the height and the side panel gives up width
+        val s = if (isLandscape) minOf(maxWidth / 1060.dp, maxHeight / 720.dp) else minOf(maxWidth / 600.dp, maxHeight / 1060.dp)
         val u = Scale(s.coerceIn(0.5f, 2f))
 
-        val far: @Composable (Modifier) -> Unit = { modifier ->
-            BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
-                val side = minOf(maxWidth, maxHeight)
-                when {
-                    panel == Panel.PLAYLISTS -> PlaylistsPanel(
-                        u, playlists, startingPlaylistKind, pickPlaylist, likedTrackIds.size,
-                        { onPlayFavorites(); panel = Panel.NONE }, { panel = Panel.NONE }, Modifier.fillMaxSize()
-                    )
-                    panel == Panel.QUEUE -> QueuePanel(u, queue, { onQueueTrackClick(it); panel = Panel.NONE }, { panel = Panel.NONE }, Modifier.fillMaxSize())
-                    lyricsShown && lyrics != null -> LyricsPanel(u, lyrics, progress, Modifier.fillMaxSize())
-                    else -> CoverWithNext(u, currentTrack, nextTrack, Modifier.size(side))
-                }
+        val side: @Composable (Modifier) -> Unit = { modifier ->
+            if (showPlaylists) {
+                PlaylistsPanel(
+                    u, playlists, startingPlaylistKind, pickPlaylist, likedTrackIds.size,
+                    { onPlayFavorites(); showPlaylists = false }, { showPlaylists = false }, modifier
+                )
+            } else {
+                SidePanel(
+                    u = u, lyrics = lyrics, lyricsTab = lyricsTab, progress = progress,
+                    onSelectLyrics = { wantLyrics -> if (wantLyrics != showLyrics) onToggleLyrics() },
+                    queue = queue, onQueueTrackClick = onQueueTrackClick,
+                    modifier = modifier
+                )
             }
         }
         val driver: @Composable (Modifier) -> Unit = { modifier ->
@@ -266,9 +266,6 @@ fun CarScreen(
                 onLike = { currentTrack?.let(onToggleLike) }, onDislike = { currentTrack?.let(onDislikeClick) },
                 showShuffle = showShuffle, shuffleEnabled = shuffleEnabled, onToggleShuffle = onToggleShuffle,
                 repeatOne = repeatOne, onToggleRepeat = onToggleRepeat,
-                queueOpen = panel == Panel.QUEUE, onToggleQueue = { panel = if (panel == Panel.QUEUE) Panel.NONE else Panel.QUEUE },
-                hasLyrics = lyrics != null, lyricsShown = lyricsShown && panel == Panel.NONE,
-                onToggleLyrics = { if (panel != Panel.NONE) panel = Panel.NONE else onToggleLyrics() },
                 modifier = modifier
             )
         }
@@ -283,10 +280,10 @@ fun CarScreen(
                         Modifier.fillMaxSize().padding(start = u(40f), end = u(40f), bottom = u(28f)),
                         horizontalArrangement = Arrangement.spacedBy(u(36f))
                     ) {
-                        val driverSide: @Composable () -> Unit = { driver(Modifier.width(u(600f)).fillMaxHeight()) }
+                        val driverSide: @Composable () -> Unit = { driver(Modifier.width(u(580f)).fillMaxHeight()) }
                         val farSide: @Composable () -> Unit = {
                             Column(Modifier.weight(1f).fillMaxHeight()) {
-                                far(Modifier.weight(1f).fillMaxWidth())
+                                side(Modifier.weight(1f).fillMaxWidth())
                                 Spacer(Modifier.height(u(16f)))
                                 SourceRow(u, sources, active)
                             }
@@ -295,9 +292,9 @@ fun CarScreen(
                     }
                 } else {
                     Column(Modifier.fillMaxSize().padding(horizontal = u(28f)).padding(bottom = u(24f))) {
-                        far(Modifier.fillMaxWidth().height(u(440f)))
+                        driver(Modifier.fillMaxWidth().height(u(560f)))
                         Spacer(Modifier.height(u(20f)))
-                        driver(Modifier.fillMaxWidth().weight(1f))
+                        side(Modifier.fillMaxWidth().weight(1f))
                         Spacer(Modifier.height(u(16f)))
                         SourceRow(u, sources, active)
                     }
@@ -385,56 +382,82 @@ private fun DriverPanel(
     onToggleShuffle: () -> Unit,
     repeatOne: Boolean,
     onToggleRepeat: () -> Unit,
-    queueOpen: Boolean,
-    onToggleQueue: () -> Unit,
-    hasLyrics: Boolean,
-    lyricsShown: Boolean,
-    onToggleLyrics: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     Column(modifier) {
-        // Title and artist, the like button next to them
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        // The cover, and next to it the title, the artist and the rating pair (like · dislike)
+        Row(Modifier.fillMaxWidth().weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier
+                    .fillMaxHeight()
+                    .aspectRatio(1f, matchHeightConstraintsFirst = true)
+                    .clip(RoundedCornerShape(u(24f)))
+                    .background(Flat.Surface)
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(context).data(track?.coverUri.toCoverUrl("600x600")).size(600).build(),
+                    contentDescription = track?.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+            Spacer(Modifier.width(u(24f)))
             Column(Modifier.weight(1f)) {
                 Text(
                     track?.title ?: stringResource(R.string.car_source_wave),
                     color = Color.White,
-                    fontSize = u.sp(48f),
+                    fontSize = u.sp(38f),
                     fontWeight = FontWeight.ExtraBold,
                     letterSpacing = (-0.02).em,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     if (isRadio) stringResource(R.string.mini_player_live) else track?.artists?.joinToString { it.name ?: "" }.orEmpty(),
                     color = Flat.TextDim,
-                    fontSize = u.sp(26f),
+                    fontSize = u.sp(24f),
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = u(4f))
                 )
-            }
-            Spacer(Modifier.width(u(16f)))
-            FlatRound(u(84f), stringResource(R.string.cd_nravitsya), onClick = onLike) {
-                Icon(
-                    if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                    contentDescription = null,
-                    tint = if (isLiked) Color(0xFFFF4D6D) else Color.White,
-                    modifier = Modifier.size(u(38f))
-                )
+                Spacer(Modifier.height(u(18f)))
+                Row(horizontalArrangement = Arrangement.spacedBy(u(14f))) {
+                    FlatRound(u(76f), stringResource(R.string.cd_nravitsya), onClick = onLike) {
+                        Icon(
+                            if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                            contentDescription = null,
+                            tint = if (isLiked) Color(0xFFFF4D6D) else Color.White,
+                            modifier = Modifier.size(u(36f))
+                        )
+                    }
+                    FlatRound(u(76f), stringResource(R.string.cd_ne_nravitsya), onClick = onDislike) {
+                        Icon(Icons.Rounded.HeartBroken, contentDescription = null, tint = Color.White, modifier = Modifier.size(u(34f)))
+                    }
+                }
             }
         }
 
-        Spacer(Modifier.weight(1f))
+        Spacer(Modifier.height(u(22f)))
         SeekBar(u, progress, durationMs, enabled = !isRadio && durationMs > 0, onSeek = onSeek)
         TimeRow(u, progress, durationMs, isRadio)
+        Spacer(Modifier.height(u(18f)))
 
-        Spacer(Modifier.height(u(20f)))
-        // Three big pills: previous, play/pause (white), next
-        Row(Modifier.fillMaxWidth().height(u(100f)), horizontalArrangement = Arrangement.spacedBy(u(16f))) {
+        // One row of controls: shuffle · previous · play · next · repeat
+        Row(
+            Modifier.fillMaxWidth().height(u(100f)),
+            horizontalArrangement = Arrangement.spacedBy(u(12f)),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ModeButton(
+                u, Icons.Rounded.Shuffle, active = shuffleEnabled, enabled = showShuffle,
+                description = stringResource(if (shuffleEnabled) R.string.car_shuffle_on else R.string.car_shuffle_off),
+                onClick = onToggleShuffle
+            )
             Pill(u, stringResource(R.string.cd_predyduschiy_trek), Modifier.weight(1f), onClick = onPrev) {
                 Icon(Icons.Rounded.SkipPrevious, contentDescription = null, tint = Color.White, modifier = Modifier.size(u(48f)))
             }
-            Pill(u, stringResource(R.string.cd_vosproizvedenie_ili_pauza), Modifier.weight(1.3f), primary = true, onClick = onPlayPause) {
+            Pill(u, stringResource(R.string.cd_vosproizvedenie_ili_pauza), Modifier.weight(1.35f), primary = true, onClick = onPlayPause) {
                 if (isBuffering) {
                     CircularProgressIndicator(color = Flat.Ground, strokeWidth = u(4f), modifier = Modifier.size(u(40f)))
                 } else {
@@ -444,30 +467,11 @@ private fun DriverPanel(
             Pill(u, stringResource(R.string.cd_sleduyuschiy_trek), Modifier.weight(1f), onClick = onNext) {
                 Icon(Icons.Rounded.SkipNext, contentDescription = null, tint = Color.White, modifier = Modifier.size(u(48f)))
             }
-        }
-
-        Spacer(Modifier.weight(1f))
-        // Toggles, each a big round target
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(u(46f)))
-                .background(Flat.Surface)
-                .padding(horizontal = u(8f), vertical = u(6f)),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            ActionButton(u, Icons.Rounded.HeartBroken, false, stringResource(R.string.cd_ne_nravitsya), onDislike)
-            if (showShuffle) {
-                ActionButton(u, Icons.Rounded.Shuffle, shuffleEnabled, stringResource(if (shuffleEnabled) R.string.car_shuffle_on else R.string.car_shuffle_off), onToggleShuffle)
-            }
-            if (!isRadio) {
-                ActionButton(u, Icons.Rounded.RepeatOne, repeatOne, stringResource(if (repeatOne) R.string.car_repeat_on else R.string.car_repeat_off), onToggleRepeat)
-                ActionButton(u, Icons.Rounded.LibraryMusic, queueOpen, stringResource(R.string.car_queue), onToggleQueue)
-            }
-            if (hasLyrics) {
-                ActionButton(u, Icons.Rounded.Subtitles, lyricsShown, stringResource(if (lyricsShown) R.string.car_lyrics_hide else R.string.car_lyrics_show), onToggleLyrics)
-            }
+            ModeButton(
+                u, Icons.Rounded.RepeatOne, active = repeatOne, enabled = !isRadio,
+                description = stringResource(if (repeatOne) R.string.car_repeat_on else R.string.car_repeat_off),
+                onClick = onToggleRepeat
+            )
         }
     }
 }
@@ -560,23 +564,32 @@ private fun FlatRound(size: Dp, description: String, onClick: () -> Unit, conten
     ) { content() }
 }
 
-/** A toggle in the bottom bar: 84 units round, blue while on. */
+/** Shuffle / repeat at the ends of the control row: round, blue while on, dimmed when it does not apply. */
 @Composable
-private fun ActionButton(u: Scale, icon: ImageVector, active: Boolean, description: String, onClick: () -> Unit) {
+private fun ModeButton(u: Scale, icon: ImageVector, active: Boolean, enabled: Boolean, description: String, onClick: () -> Unit) {
     Box(
         Modifier
             .size(u(84f))
             .clip(CircleShape)
-            .background(if (active) Flat.AccentSoft else Color.Transparent)
-            .clickable(role = Role.Button, onClickLabel = description, onClick = onClick)
+            .background(if (active && enabled) Flat.AccentSoft else Flat.Surface)
+            .clickable(enabled = enabled, role = Role.Button, onClickLabel = description, onClick = onClick)
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center
     ) {
-        Icon(icon, contentDescription = null, tint = if (active) Flat.Accent else Color.White, modifier = Modifier.size(u(38f)))
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = when {
+                !enabled -> Flat.TextDim.copy(alpha = 0.35f)
+                active -> Flat.Accent
+                else -> Color.White
+            },
+            modifier = Modifier.size(u(38f))
+        )
     }
 }
 
-/** Big icon tiles of the sources under the cover; the playing one is lit. */
+/** Big icon tiles of the sources; the playing one is lit. */
 @Composable
 private fun SourceRow(u: Scale, items: List<SourceItem>, active: CarSource?) {
     Row(Modifier.fillMaxWidth().height(u(84f)), horizontalArrangement = Arrangement.spacedBy(u(12f))) {
@@ -600,52 +613,7 @@ private fun RowScope.SourceTile(u: Scale, item: SourceItem, selected: Boolean) {
     }
 }
 
-/** The cover, flat, with the next track on a plate over its lower edge. */
-@Composable
-private fun CoverWithNext(u: Scale, track: TrackDetailsDto?, next: TrackDetailsDto?, modifier: Modifier) {
-    val context = LocalContext.current
-    Box(
-        modifier
-            .aspectRatio(1f)
-            .clip(RoundedCornerShape(u(28f)))
-            .background(Flat.Surface)
-    ) {
-        AsyncImage(
-            model = ImageRequest.Builder(context).data(track?.coverUri.toCoverUrl("800x800")).size(800).build(),
-            contentDescription = track?.title,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
-        )
-        if (next != null) {
-            Row(
-                Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(u(14f))
-                    .fillMaxWidth()
-                    .height(u(80f))
-                    .clip(RoundedCornerShape(u(22f)))
-                    .background(Color(0xE6101215))
-                    .padding(start = u(12f), end = u(18f)),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                AsyncImage(
-                    model = ImageRequest.Builder(context).data(next.coverUri.toCoverUrl("200x200")).size(200).build(),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(u(56f)).clip(RoundedCornerShape(u(12f))).background(Flat.SurfaceHigh)
-                )
-                Spacer(Modifier.width(u(14f)))
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.car_next), color = Flat.TextDim, fontSize = u.sp(11f), fontWeight = FontWeight.ExtraBold, letterSpacing = 0.18.em)
-                    Text(next.title ?: "", color = Color.White, fontSize = u.sp(20f), fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(next.artists.joinToString { it.name ?: "" }, color = Flat.TextDim, fontSize = u.sp(15f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-            }
-        }
-    }
-}
-
-/** A flat card in the cover's place with a title and a close button. */
+/** A flat card on the far side with a title and a close button (the playlists picker). */
 @Composable
 private fun PanelCard(u: Scale, title: String, onClose: () -> Unit, modifier: Modifier, content: @Composable () -> Unit) {
     Column(
@@ -672,50 +640,106 @@ private fun PanelCard(u: Scale, title: String, onClose: () -> Unit, modifier: Mo
     }
 }
 
-/** Synced lyrics in the cover's place. */
+/**
+ * The far side: lyrics or the queue, switched with two tabs on top. Without lyrics only the queue is
+ * there (the text tab is greyed out).
+ */
 @Composable
-private fun LyricsPanel(u: Scale, lyrics: Lyrics, progress: () -> Long, modifier: Modifier) {
-    Box(
+private fun SidePanel(
+    u: Scale,
+    lyrics: Lyrics?,
+    lyricsTab: Boolean,
+    progress: () -> Long,
+    onSelectLyrics: (Boolean) -> Unit,
+    queue: List<TrackDetailsDto>,
+    onQueueTrackClick: (String) -> Unit,
+    modifier: Modifier
+) {
+    Column(
         modifier
             .clip(RoundedCornerShape(u(28f)))
             .background(Flat.Surface)
-            .padding(horizontal = u(28f), vertical = u(8f))
+            .padding(u(14f))
     ) {
-        LyricsView(lyrics = lyrics, progress = progress, textSize = u.sp(30f), lineSpacing = u(8f), modifier = Modifier.fillMaxSize())
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .height(u(64f))
+                .clip(RoundedCornerShape(u(32f)))
+                .background(Flat.Ground)
+                .padding(u(5f)),
+            horizontalArrangement = Arrangement.spacedBy(u(6f))
+        ) {
+            TabPill(u, Icons.Rounded.Subtitles, stringResource(R.string.car_tab_lyrics), selected = lyricsTab, enabled = lyrics != null) { onSelectLyrics(true) }
+            TabPill(u, Icons.Rounded.LibraryMusic, stringResource(R.string.car_tab_queue), selected = !lyricsTab, enabled = true) { onSelectLyrics(false) }
+        }
+        Spacer(Modifier.height(u(10f)))
+        if (lyricsTab && lyrics != null) {
+            LyricsView(
+                lyrics = lyrics,
+                progress = progress,
+                textSize = u.sp(30f),
+                lineSpacing = u(8f),
+                modifier = Modifier.fillMaxSize().padding(horizontal = u(14f))
+            )
+        } else {
+            QueueList(u, queue, onQueueTrackClick)
+        }
+    }
+}
+
+@Composable
+private fun RowScope.TabPill(u: Scale, icon: ImageVector, label: String, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
+    val tint = when {
+        selected -> Color.White
+        enabled -> Flat.TextDim
+        else -> Flat.TextDim.copy(alpha = 0.35f)
+    }
+    Row(
+        Modifier
+            .weight(1f)
+            .fillMaxHeight()
+            .clip(RoundedCornerShape(u(28f)))
+            .background(if (selected) Flat.SurfaceHigh else Color.Transparent)
+            .clickable(enabled = enabled && !selected, role = Role.Tab, onClickLabel = label, onClick = onClick),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(u(28f)))
+        Spacer(Modifier.width(u(10f)))
+        Text(label, color = tint, fontSize = u.sp(19f), fontWeight = FontWeight.Bold, maxLines = 1)
     }
 }
 
 /** What plays next; a tap jumps there. */
 @Composable
-private fun QueuePanel(u: Scale, queue: List<TrackDetailsDto>, onPick: (String) -> Unit, onClose: () -> Unit, modifier: Modifier) {
+private fun QueueList(u: Scale, queue: List<TrackDetailsDto>, onPick: (String) -> Unit) {
     val context = LocalContext.current
-    PanelCard(u, stringResource(R.string.car_queue), onClose, modifier) {
-        if (queue.isEmpty()) {
-            Text(stringResource(R.string.car_queue_empty), color = Flat.TextDim, fontSize = u.sp(18f))
-        } else {
-            LazyColumn(Modifier.fillMaxSize()) {
-                // No keys: a queue may hold the same track twice
-                items(queue) { track ->
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(u(18f)))
-                            .clickable(role = Role.Button, onClick = { onPick(track.idString) })
-                            .padding(vertical = u(8f), horizontal = u(6f)),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(context).data(track.coverUri.toCoverUrl("200x200")).size(200).build(),
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.size(u(64f)).clip(RoundedCornerShape(u(14f))).background(Flat.SurfaceHigh)
-                        )
-                        Spacer(Modifier.width(u(16f)))
-                        Column(Modifier.weight(1f)) {
-                            Text(track.title.orEmpty(), color = Color.White, fontSize = u.sp(21f), fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text(track.artists.joinToString { it.name ?: "" }, color = Flat.TextDim, fontSize = u.sp(16f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
-                    }
+    if (queue.isEmpty()) {
+        Text(stringResource(R.string.car_queue_empty), color = Flat.TextDim, fontSize = u.sp(18f), modifier = Modifier.padding(u(14f)))
+        return
+    }
+    LazyColumn(Modifier.fillMaxSize()) {
+        // No keys: a queue may hold the same track twice
+        items(queue) { track ->
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(u(18f)))
+                    .clickable(role = Role.Button, onClick = { onPick(track.idString) })
+                    .padding(vertical = u(8f), horizontal = u(8f)),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(context).data(track.coverUri.toCoverUrl("200x200")).size(200).build(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(u(64f)).clip(RoundedCornerShape(u(14f))).background(Flat.SurfaceHigh)
+                )
+                Spacer(Modifier.width(u(16f)))
+                Column(Modifier.weight(1f)) {
+                    Text(track.title.orEmpty(), color = Color.White, fontSize = u.sp(21f), fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(track.artists.joinToString { it.name ?: "" }, color = Flat.TextDim, fontSize = u.sp(16f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }

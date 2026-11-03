@@ -136,7 +136,7 @@ class CarSplitScreenshotTest {
 
     @Test
     @Config(qualifiers = "w1040dp-h610dp-land-mdpi")
-    fun splitWideQueue() { show(); compose.onNodeWithContentDescription("Далее в очереди").performClick(); frames(); snap("split_1040x610_queue") }
+    fun splitWideQueue() { show(); snap("split_1040x610_queue") }
 
     // No split: the whole 1920×720 screen
     @Test
