@@ -173,7 +173,7 @@ private fun WaveInstrument(knobSize: Dp, mode: RingMode, isPlaying: Boolean, pro
             size = knobSize,
             primary = true
         ) {
-            PlayPauseGlyph(isPlaying = isPlaying, size = knobSize * 0.3f, tint = HiFi.Ground)
+            PlayPauseGlyph(isPlaying = isPlaying, size = knobSize * 0.5f, tint = HiFi.Ground)
         }
     }
 }
