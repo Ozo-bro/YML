@@ -100,12 +100,11 @@ val LocalCarClock = androidx.compose.runtime.staticCompositionLocalOf<() -> Long
 enum class CarSource { WAVE, LIKED, PLAYLISTS, DOWNLOADED }
 
 /** Which source tile is lit for the playing [source]. Pure; unit-tested. */
-fun carSourceOf(source: PlaylistSource, isRadio: Boolean): CarSource? = when {
-    isRadio -> null
-    source == PlaylistSource.VIBE -> CarSource.WAVE
-    source == PlaylistSource.LIBRARY -> CarSource.LIKED
-    source == PlaylistSource.PLAYLIST -> CarSource.PLAYLISTS
-    source == PlaylistSource.OFFLINE -> CarSource.DOWNLOADED
+fun carSourceOf(source: PlaylistSource): CarSource? = when (source) {
+    PlaylistSource.VIBE -> CarSource.WAVE
+    PlaylistSource.LIBRARY -> CarSource.LIKED
+    PlaylistSource.PLAYLIST -> CarSource.PLAYLISTS
+    PlaylistSource.OFFLINE -> CarSource.DOWNLOADED
     else -> null
 }
 
@@ -205,8 +204,7 @@ fun CarScreen(
     }
 
     val playPause = { if (!isPlaying && currentTrack == null) onPlayMyVibe() else onPlayPauseClick() }
-    val isRadio = currentTrack?.isRadio == true
-    val playing = carSourceOf(source, isRadio)
+    val playing = carSourceOf(source)
     val active = if (showPlaylists) CarSource.PLAYLISTS else playing
     val sourceLabel = when (playing) {
         CarSource.WAVE -> stringResource(R.string.car_source_wave)
@@ -215,7 +213,7 @@ fun CarScreen(
         CarSource.DOWNLOADED -> stringResource(R.string.car_source_downloaded)
         null -> ""
     }
-    val showShuffle = currentTrack != null && !isRadio && PlaybackQueue.shuffleApplies(source)
+    val showShuffle = currentTrack != null && PlaybackQueue.shuffleApplies(source)
     // The text tab when the track has lyrics and the user keeps it (the remembered choice), else the queue
     val lyricsTab = lyrics != null && showLyrics
     val pickPlaylist: (UserPlaylistDto) -> Unit = { onPlayPlaylist(it); showPlaylists = false }
@@ -263,7 +261,7 @@ fun CarScreen(
         val driver: @Composable (Modifier) -> Unit = { modifier ->
             DriverPanel(
                 u = u, track = currentTrack, isPlaying = isPlaying, isBuffering = isBuffering, isLiked = isLiked,
-                isRadio = isRadio, progress = progress, durationMs = durationMs, onSeek = onSeek,
+                progress = progress, durationMs = durationMs, onSeek = onSeek,
                 onPlayPause = playPause, onPrev = onPrevClick, onNext = onNextClick,
                 onLike = { currentTrack?.let(onToggleLike) }, onDislike = { currentTrack?.let(onDislikeClick) },
                 showShuffle = showShuffle, shuffleEnabled = shuffleEnabled, onToggleShuffle = onToggleShuffle,
@@ -276,7 +274,7 @@ fun CarScreen(
             androidx.compose.material3.LocalTextStyle provides androidx.compose.material3.LocalTextStyle.current.copy(lineHeight = TextUnit.Unspecified)
         ) {
             Column(Modifier.fillMaxSize().systemBarsPadding()) {
-                CarHeader(u, sourceLabel, currentTrack, isRadio, onExit)
+                CarHeader(u, sourceLabel, currentTrack, onExit)
                 if (isLandscape) {
                     Row(
                         Modifier.fillMaxSize().padding(start = u(40f), end = u(40f), bottom = u(28f)),
@@ -316,7 +314,7 @@ private data class SourceItem(val source: CarSource, val icon: ImageVector, val 
 
 /** Top line: back, what plays (source · title · artist), the clock. */
 @Composable
-private fun CarHeader(u: Scale, sourceLabel: String, track: TrackDetailsDto?, isRadio: Boolean, onExit: () -> Unit) {
+private fun CarHeader(u: Scale, sourceLabel: String, track: TrackDetailsDto?, onExit: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -346,7 +344,7 @@ private fun CarHeader(u: Scale, sourceLabel: String, track: TrackDetailsDto?, is
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                if (isRadio) stringResource(R.string.mini_player_live) else track?.artists?.joinToString { it.name ?: "" }.orEmpty(),
+                track?.artists?.joinToString { it.name ?: "" }.orEmpty(),
                 color = Flat.TextDim,
                 fontSize = u.sp(21f),
                 maxLines = 1,
@@ -391,7 +389,6 @@ private fun DriverPanel(
     isPlaying: Boolean,
     isBuffering: Boolean,
     isLiked: Boolean,
-    isRadio: Boolean,
     progress: () -> Long,
     durationMs: Long,
     onSeek: (Long) -> Unit,
@@ -469,8 +466,8 @@ private fun DriverPanel(
         }
 
         Spacer(Modifier.height(u(22f)))
-        SeekBar(u, progress, durationMs, enabled = !isRadio && durationMs > 0, onSeek = onSeek)
-        TimeRow(u, progress, durationMs, isRadio)
+        SeekBar(u, progress, durationMs, enabled = durationMs > 0, onSeek = onSeek)
+        TimeRow(u, progress, durationMs)
         Spacer(Modifier.height(u(18f)))
 
         // One row of controls: shuffle · previous · play · next · repeat
@@ -498,7 +495,7 @@ private fun DriverPanel(
                 Icon(Icons.Rounded.SkipNext, contentDescription = null, tint = Color.White, modifier = Modifier.size(u(48f)))
             }
             ModeButton(
-                u, Icons.Rounded.RepeatOne, active = repeatOne, enabled = !isRadio,
+                u, Icons.Rounded.RepeatOne, active = repeatOne, enabled = true,
                 description = stringResource(if (repeatOne) R.string.car_repeat_on else R.string.car_repeat_off),
                 onClick = onToggleRepeat
             )
@@ -547,17 +544,13 @@ private fun SeekBar(u: Scale, progress: () -> Long, durationMs: Long, enabled: B
 
 /** Elapsed on the left, remaining on the right; recomposes once a second. */
 @Composable
-private fun TimeRow(u: Scale, progress: () -> Long, durationMs: Long, isRadio: Boolean) {
+private fun TimeRow(u: Scale, progress: () -> Long, durationMs: Long) {
     val seconds by remember(durationMs) { derivedStateOf { progress() / 1000L } }
     Row(Modifier.fillMaxWidth()) {
-        if (isRadio) {
-            Text(stringResource(R.string.radio_on_air), color = Flat.TextDim, fontSize = u.sp(18f), fontWeight = FontWeight.Bold)
-        } else {
-            val (elapsed, remaining) = carTimeReadout(seconds * 1000L, durationMs)
-            Text(elapsed, color = Color.White, fontSize = u.sp(20f), fontWeight = FontWeight.SemiBold, style = Tabular)
-            Spacer(Modifier.weight(1f))
-            Text(remaining, color = Flat.TextDim, fontSize = u.sp(20f), fontWeight = FontWeight.Medium, style = Tabular)
-        }
+        val (elapsed, remaining) = carTimeReadout(seconds * 1000L, durationMs)
+        Text(elapsed, color = Color.White, fontSize = u.sp(20f), fontWeight = FontWeight.SemiBold, style = Tabular)
+        Spacer(Modifier.weight(1f))
+        Text(remaining, color = Flat.TextDim, fontSize = u.sp(20f), fontWeight = FontWeight.Medium, style = Tabular)
     }
 }
 

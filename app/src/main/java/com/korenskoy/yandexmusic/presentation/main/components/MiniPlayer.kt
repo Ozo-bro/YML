@@ -53,7 +53,6 @@ import com.korenskoy.yandexmusic.data.dto.TrackDetailsDto
 import com.korenskoy.yandexmusic.presentation.hifi.HiFi
 import com.korenskoy.yandexmusic.presentation.hifi.HiFiKnob
 import com.korenskoy.yandexmusic.presentation.hifi.PlayPauseGlyph
-import com.korenskoy.yandexmusic.utils.browserUserAgent
 import com.korenskoy.yandexmusic.utils.toCoverUrl
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -115,7 +114,7 @@ fun MiniPlayer(
             }
             .drawBehind {
                 // Progress hairline along the bottom edge
-                if (durationMs > 0 && !track.isRadio) {
+                if (durationMs > 0) {
                     val fraction = (progress().toFloat() / durationMs).coerceIn(0f, 1f)
                     val inset = 24.dp.toPx()
                     val y = size.height - 1.dp.toPx()
@@ -137,20 +136,17 @@ fun MiniPlayer(
                     .size(44.dp)
                     
                     .clip(RoundedCornerShape(12.dp))
-                    .background(if (track.isRadio) Color.White else Color(0xFF1C1F28)),
+                    .background(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Surface),
                 contentAlignment = Alignment.Center
             ) {
                 AsyncImage(
                     model = ImageRequest.Builder(context)
                         .data(track.coverUri.toCoverUrl("200x200"))
                         .crossfade(true)
-                        .apply { if (track.isRadio) browserUserAgent() }
                         .build(),
                     contentDescription = stringResource(R.string.cd_oblozhka),
-                    contentScale = if (track.isRadio) ContentScale.Fit else ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(if (track.isRadio) 4.dp else 0.dp)
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
                 )
             }
             Spacer(Modifier.width(12.dp))
@@ -163,21 +159,13 @@ fun MiniPlayer(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                if (track.isRadio) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(6.dp).clip(CircleShape).background(HiFi.Live))
-                        Spacer(Modifier.width(6.dp))
-                        Text(stringResource(R.string.mini_player_live), color = HiFi.TextSecondary, fontSize = 13.sp, maxLines = 1)
-                    }
-                } else {
-                    Text(
-                        text = track.artists.joinToString { it.name ?: "" }.ifEmpty { "Неизвестный исполнитель" },
-                        color = HiFi.TextSecondary,
-                        fontSize = 13.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                Text(
+                    text = track.artists.joinToString { it.name ?: "" }.ifEmpty { "Неизвестный исполнитель" },
+                    color = HiFi.TextSecondary,
+                    fontSize = 13.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
             Spacer(Modifier.width(8.dp))
             HiFiKnob(
@@ -197,7 +185,7 @@ fun MiniPlayer(
             ) {
                 Icon(
                     Icons.Rounded.SkipNext,
-                    contentDescription = stringResource(if (track.isRadio) R.string.cd_next_station else R.string.cd_sleduyuschiy_trek),
+                    contentDescription = stringResource(R.string.cd_sleduyuschiy_trek),
                     tint = Color.White,
                     modifier = Modifier.size(26.dp)
                 )

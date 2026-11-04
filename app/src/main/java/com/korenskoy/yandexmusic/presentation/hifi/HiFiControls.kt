@@ -80,25 +80,6 @@ fun Modifier.hifiGlass(shape: Shape, fill: Color = HiFi.GlassFill, border: Color
 /** A flat inset (time readouts, slider tracks): the raised surface colour, no shading. */
 fun Modifier.hifiRecessed(cornerRadius: Dp): Modifier = this.clip(RoundedCornerShape(cornerRadius)).background(HiFi.SurfaceHigh)
 
-/** The old shaded inset; unused since the flat redesign. */
-@Suppress("unused")
-private fun Modifier.hifiRecessedShaded(cornerRadius: Dp): Modifier = this.drawWithCache {
-    val r = CornerRadius(cornerRadius.toPx())
-    val fill = Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.58f), Color.Black.copy(alpha = 0.36f)))
-    val innerShadow = Brush.verticalGradient(0f to Color.Black.copy(alpha = 0.55f), 0.18f to Color.Transparent)
-    onDrawBehind {
-        drawRoundRect(fill, cornerRadius = r)
-        drawRoundRect(innerShadow, cornerRadius = r)
-        drawRoundRect(
-            color = Color.White.copy(alpha = 0.10f),
-            topLeft = Offset(0f, size.height - 1.dp.toPx()),
-            size = androidx.compose.ui.geometry.Size(size.width, 1.dp.toPx()),
-            cornerRadius = r
-        )
-        drawRoundRect(color = Color.White.copy(alpha = 0.06f), cornerRadius = r, style = androidx.compose.ui.graphics.drawscope.Stroke(1f))
-    }
-}
-
 /** The "selected" material: a flat soft-blue fill. */
 fun Modifier.hifiAnodized(shape: Shape): Modifier = this.clip(shape).background(HiFi.SelectedFill)
 

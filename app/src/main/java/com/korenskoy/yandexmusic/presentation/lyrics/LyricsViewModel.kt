@@ -40,7 +40,7 @@ class LyricsViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             playbackController.currentTrack
-                .map { track -> track?.takeUnless { it.isRadio }?.idString }
+                .map { track -> track?.idString }
                 .distinctUntilChanged()
                 .collectLatest { id ->
                     _state.value = LyricsState(id, null)

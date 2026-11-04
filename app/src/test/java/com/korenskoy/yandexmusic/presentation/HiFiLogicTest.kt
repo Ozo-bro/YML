@@ -4,9 +4,6 @@ import com.korenskoy.yandexmusic.data.player.PlaylistSource
 import com.korenskoy.yandexmusic.presentation.car.CarSource
 import com.korenskoy.yandexmusic.presentation.car.carSourceOf
 import com.korenskoy.yandexmusic.presentation.car.carTimeReadout
-import com.korenskoy.yandexmusic.presentation.hifi.HiFiLitePolicy
-import com.korenskoy.yandexmusic.presentation.hifi.RingMode
-import com.korenskoy.yandexmusic.presentation.hifi.SpectrumMath
 import com.korenskoy.yandexmusic.presentation.hifi.TintMath
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -15,21 +12,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.abs
 
-/** Pure logic of the Hi-Fi redesign (1.8.0): lite mode, cover tint, spectrum ring, FM dial, car readouts. */
+/** Pure logic of the design: cover tint and the car screen's readouts. */
 class HiFiLogicTest {
-
-    // --- Lite mode -------------------------------------------------------------------------------
-
-    @Test
-    fun liteModeOnlyWhenTheDeviceAsksForIt() {
-        assertFalse(HiFiLitePolicy.isLite(sdkInt = 35, lowRamDevice = false, powerSave = false, animatorScale = 1f))
-        assertTrue("Android 9 and older", HiFiLitePolicy.isLite(28, false, false, 1f))
-        assertTrue("low-RAM head units", HiFiLitePolicy.isLite(35, true, false, 1f))
-        assertTrue("battery saver", HiFiLitePolicy.isLite(35, false, true, 1f))
-        assertTrue("animations switched off", HiFiLitePolicy.isLite(35, false, false, 0f))
-        assertFalse("slowed animations are still animations", HiFiLitePolicy.isLite(35, false, false, 0.5f))
-        assertFalse("Android 10 is the floor", HiFiLitePolicy.isLite(29, false, false, 1f))
-    }
 
     // --- Cover tint ------------------------------------------------------------------------------
 
@@ -72,55 +56,17 @@ class HiFiLogicTest {
         assertTrue("barely saturated: ${grey[1]}", grey[1] in 0.10f..0.18f)
     }
 
-    // --- Spectrum ring ---------------------------------------------------------------------------
-
-    @Test
-    fun pausedRingCollapsesToDots() {
-        repeat(72) { assertEquals(0f, SpectrumMath.level(it, 72, 3.3f, RingMode.Paused), 0f) }
-    }
-
-    @Test
-    fun playingBarsStayVisibleAndBounded() {
-        for (t in listOf(0f, 0.7f, 12.5f, 999f)) repeat(90) {
-            val l = SpectrumMath.level(it, 90, t, RingMode.Playing)
-            assertTrue("bar $it at $t: $l", l in 0.08f..1f)
-        }
-    }
-
-    @Test
-    fun playingRingMoves() {
-        val a = (0 until 72).map { SpectrumMath.level(it, 72, 1f, RingMode.Playing) }
-        val b = (0 until 72).map { SpectrumMath.level(it, 72, 1.5f, RingMode.Playing) }
-        assertTrue(a != b)
-    }
-
-    @Test
-    fun loadingWaveHasOneBrightHeadThatRuns() {
-        fun head(t: Float) = (0 until 72).maxByOrNull { SpectrumMath.level(it, 72, t, RingMode.Loading) }!!
-        val levels = (0 until 72).map { SpectrumMath.level(it, 72, 0.5f, RingMode.Loading) }
-        assertTrue("bright head", levels.max() > 0.9f)
-        assertTrue("quiet rest", levels.count { it < 0.2f } > 50)
-        assertTrue("the head moves", head(0.2f) != head(0.8f))
-    }
-
-    @Test
-    fun playedArcFollowsProgressClockwise() {
-        assertEquals(0, (0 until 72).count { SpectrumMath.isPlayed(it, 72, 0f) })
-        assertEquals(36, (0 until 72).count { SpectrumMath.isPlayed(it, 72, 0.5f) })
-        assertEquals(72, (0 until 72).count { SpectrumMath.isPlayed(it, 72, 1f) })
-        assertTrue("starts at the top", SpectrumMath.isPlayed(0, 72, 0.01f))
-    }
-
     // --- Car -------------------------------------------------------------------------------------
 
     @Test
     fun dockLightsThePlayingSource() {
-        assertEquals(CarSource.WAVE, carSourceOf(PlaylistSource.VIBE, isRadio = false))
-        assertEquals(CarSource.LIKED, carSourceOf(PlaylistSource.LIBRARY, false))
-        assertEquals("hits are not in the dock", null, carSourceOf(PlaylistSource.TRENDS, false))
-        assertEquals("a radio stream lights no tile", null, carSourceOf(PlaylistSource.VIBE, true))
-        assertNull(carSourceOf(PlaylistSource.SEARCH, false))
-        assertNull(carSourceOf(PlaylistSource.NONE, false))
+        assertEquals(CarSource.WAVE, carSourceOf(PlaylistSource.VIBE))
+        assertEquals(CarSource.LIKED, carSourceOf(PlaylistSource.LIBRARY))
+        assertEquals(CarSource.PLAYLISTS, carSourceOf(PlaylistSource.PLAYLIST))
+        assertEquals(CarSource.DOWNLOADED, carSourceOf(PlaylistSource.OFFLINE))
+        assertEquals("hits are not in the dock", null, carSourceOf(PlaylistSource.TRENDS))
+        assertNull(carSourceOf(PlaylistSource.SEARCH))
+        assertNull(carSourceOf(PlaylistSource.NONE))
     }
 
     @Test

@@ -119,7 +119,6 @@ data class TrackDetailsDto(
     @SerialName("artists") val artists: List<ArtistDto> = emptyList(),
     @SerialName("coverUri") val coverUri: String? = null,
     @SerialName("durationMs") val durationMs: Long? = null,
-    @kotlinx.serialization.Transient val isRadio: Boolean = false,
     @SerialName("albums") val albums: List<TrackAlbumDto> = emptyList()
 ) {
     val idString: String

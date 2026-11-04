@@ -2,7 +2,7 @@ package com.korenskoy.yandexmusic.data.player
 
 /** Where the current queue came from. */
 enum class PlaylistSource {
-    LIBRARY, VIBE, SEARCH, TRENDS, RADIO, NONE,
+    LIBRARY, VIBE, SEARCH, TRENDS, NONE,
     /** One of the user's own playlists. New values go last: the name is persisted in the session file. */
     PLAYLIST,
     /** No connection: the downloaded tracks (liked + offline wave); back to My Wave once online. */
@@ -54,9 +54,8 @@ object PlaybackQueue {
         return null
     }
 
-    /** Shuffle mode applies to everything except My Wave (an endless stream) and radio. */
-    fun shuffleApplies(source: PlaylistSource): Boolean =
-        source != PlaylistSource.VIBE && source != PlaylistSource.RADIO
+    /** Shuffle mode applies to everything except My Wave (an endless stream). */
+    fun shuffleApplies(source: PlaylistSource): Boolean = source != PlaylistSource.VIBE
 
     /** Shuffle: the track at [currentIndex] goes first, the rest follow in random order. */
     fun <T> shuffledAround(queue: List<T>, currentIndex: Int, random: kotlin.random.Random = kotlin.random.Random): List<T> {

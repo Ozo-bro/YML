@@ -89,9 +89,9 @@ class PlaybackQueueTest {
     }
 
     @Test
-    fun shuffleSkipsTheWaveAndRadio() {
+    fun shuffleSkipsTheWave() {
         assertEquals(false, PlaybackQueue.shuffleApplies(PlaylistSource.VIBE))
-        assertEquals(false, PlaybackQueue.shuffleApplies(PlaylistSource.RADIO))
+        assertEquals(true, PlaybackQueue.shuffleApplies(PlaylistSource.OFFLINE))
         assertEquals(true, PlaybackQueue.shuffleApplies(PlaylistSource.PLAYLIST))
         assertEquals(true, PlaybackQueue.shuffleApplies(PlaylistSource.LIBRARY))
     }

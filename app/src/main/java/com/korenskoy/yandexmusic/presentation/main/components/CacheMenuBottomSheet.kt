@@ -93,8 +93,6 @@ import com.korenskoy.yandexmusic.presentation.hifi.HiFiSlider
 import com.korenskoy.yandexmusic.presentation.hifi.HiFiSwitch
 import com.korenskoy.yandexmusic.presentation.hifi.HiFiType
 import com.korenskoy.yandexmusic.presentation.hifi.IconPlaque
-import com.korenskoy.yandexmusic.presentation.hifi.hifiGrain
-import com.korenskoy.yandexmusic.presentation.hifi.LocalHiFiLite
 import com.korenskoy.yandexmusic.utils.DisplayScale
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -178,7 +176,6 @@ fun CacheMenuBottomSheet(
                         .offset { IntOffset(0, dragOffset.value.roundToInt()) }
                         .clip(sheetShape)
                         .background(HiFi.SheetFill)
-                        .hifiGrain(enabled = !LocalHiFiLite.current, alpha = 0.35f)
                         .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { }
                 ) {
                     // Header: drag it down to close
@@ -475,7 +472,7 @@ private fun AccountCard(name: String, avatarUrl: String?, hasPlus: Boolean, onSw
             Modifier
                 .size(60.dp)
                 .clip(CircleShape)
-                .background(Brush.verticalGradient(HiFi.MetalEdge))
+                .background(HiFi.SurfaceHigh)
                 .padding(2.dp)
                 .clip(CircleShape)
                 .background(androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Surface)),

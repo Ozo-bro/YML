@@ -86,11 +86,10 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
           cache: gradle
-      - name: Unit tests and car screenshots
+      - name: All unit tests (renders the screenshots too)
         run: |
           chmod +x gradlew
-          ./gradlew testDebugUnitTest --no-daemon -Proborazzi.test.record=true \
-            --tests "*PlaybackQueueTest" --tests "*HiFiLogicTest" --tests "*LyricsTest" --tests "*CarSplitScreenshotTest" --tests "*.ScreenshotTest"
+          ./gradlew testDebugUnitTest --no-daemon --continue -Proborazzi.test.record=true
       - name: Publish car screens to the ci-screens branch (for review)
         if: always()
         env:

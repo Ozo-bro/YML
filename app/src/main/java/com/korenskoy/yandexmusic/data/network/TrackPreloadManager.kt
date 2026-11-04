@@ -309,7 +309,6 @@ class TrackPreloadManager @Inject constructor(
     suspend fun getOrFetchUrl(trackId: String): String? = fetchOrAwait(trackId)
 
     private suspend fun fetchOrAwait(trackId: String): String? {
-        if (trackId.startsWith("radio_")) return null
         if (downloadManager.isTrackDownloaded(trackId)) return null
         // Reuse a cached link unless its quality was neither lossless nor 320k — then re-resolve to try for better.
         resolvedUrls[trackId]?.takeIf {

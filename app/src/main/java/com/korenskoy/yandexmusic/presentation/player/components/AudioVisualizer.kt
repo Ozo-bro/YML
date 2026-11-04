@@ -41,21 +41,8 @@ fun AudioVisualizer(
     val spacing = if (isCompact) 2.dp else 4.dp
     val maxHeight = if (isCompact) 16.dp else 32.dp
 
-    // The animation runs only while playing; paused bars are static and cost nothing per frame
-    // Light mode (weak head units): static bars, no per-frame redraw
-    val phaseState: State<Float> = if (isPlaying && !com.korenskoy.yandexmusic.presentation.hifi.LocalHiFiLite.current) {
-        rememberInfiniteTransition(label = "visualizer_transition").animateFloat(
-            initialValue = 0f,
-            targetValue = 2 * Math.PI.toFloat(),
-            animationSpec = infiniteRepeatable(
-                animation = tween(1200, easing = LinearEasing),
-                repeatMode = RepeatMode.Restart
-            ),
-            label = "phase"
-        )
-    } else {
-        remember { mutableFloatStateOf(0f) }
-    }
+    // Static bars: no per-frame redraw on weak head units
+    val phaseState: State<Float> = remember { mutableFloatStateOf(0f) }
 
     Row(
         modifier = modifier.height(maxHeight),

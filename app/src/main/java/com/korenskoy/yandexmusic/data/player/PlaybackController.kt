@@ -5,17 +5,13 @@ import androidx.core.net.toUri
 import android.content.Context
 import android.util.Log
 import android.widget.Toast
-import com.korenskoy.yandexmusic.BuildConfig
 import com.korenskoy.yandexmusic.data.cache.PlaybackSnapshot
 import com.korenskoy.yandexmusic.data.cache.PlaybackStateStore
 import com.korenskoy.yandexmusic.data.cache.PlaylistCacheManager
-import com.korenskoy.yandexmusic.data.dto.ArtistDto
 import com.korenskoy.yandexmusic.data.dto.TrackDetailsDto
 import com.korenskoy.yandexmusic.data.network.TrackDownloadManager
 import com.korenskoy.yandexmusic.data.network.TrackPreloadManager
 import com.korenskoy.yandexmusic.data.network.YandexMusicApi
-import com.korenskoy.yandexmusic.data.repository.RadioRepository
-import com.korenskoy.yandexmusic.domain.model.RadioStation
 import com.korenskoy.yandexmusic.domain.repository.AuthRepository
 import com.korenskoy.yandexmusic.domain.repository.PlaybackFailure
 import com.korenskoy.yandexmusic.domain.repository.PlayerRepository
@@ -59,7 +55,6 @@ class PlaybackController @Inject constructor(
     private val downloadManager: TrackDownloadManager,
     private val preloadManager: TrackPreloadManager,
     private val cacheManager: PlaylistCacheManager,
-    private val radioRepository: RadioRepository,
     private val stateStore: PlaybackStateStore,
     private val settingsRepository: com.korenskoy.yandexmusic.domain.repository.SettingsRepository,
     private val networkMonitor: com.korenskoy.yandexmusic.data.network.NetworkMonitor,
@@ -101,7 +96,7 @@ class PlaybackController @Inject constructor(
     val sleepTimer: StateFlow<SleepTimerState?> = _sleepTimer.asStateFlow()
     private var sleepJob: Job? = null
 
-    /** Real stream quality of the current track ("MP3 · 320 кбит/с"), null for radio or while unknown. */
+    /** Real stream quality of the current track ("MP3 · 320 кбит/с"), null while unknown. */
     private val _streamQuality = MutableStateFlow<String?>(null)
     val streamQuality: StateFlow<String?> = _streamQuality.asStateFlow()
 
@@ -231,7 +226,7 @@ class PlaybackController @Inject constructor(
             // Picking a track inside the playing queue: keep its order (shuffled or not)
             PlaybackQueue.isSameQueue(requested, _currentPlaylist.value) { it.idString } -> requested
             // A new queue with shuffle on: the picked track first, the rest mixed
-            _shuffleEnabled.value && PlaybackQueue.shuffleApplies(effectiveSource) && !track.isRadio -> {
+            _shuffleEnabled.value && PlaybackQueue.shuffleApplies(effectiveSource) -> {
                 unshuffledQueue = requested
                 PlaybackQueue.shuffledAround(requested, requested.indexOf(track))
             }
@@ -261,7 +256,7 @@ class PlaybackController @Inject constructor(
         if (_currentSource.value == PlaylistSource.VIBE && playlist.size - currentIndex <= 20) {
             fetchMoreVibeTracks()
         }
-        if (_currentSource.value == PlaylistSource.VIBE && !track.isRadio) {
+        if (_currentSource.value == PlaylistSource.VIBE) {
             sendRotorFeedback("trackStarted", trackId)
         }
 
@@ -310,11 +305,6 @@ class PlaybackController @Inject constructor(
         playTrack(trackToPlay.idString, hitsList, PlaylistSource.TRENDS)
     }
 
-    fun playRadioStation(station: RadioStation) {
-        val radioTrack = radioTrackFor(station)
-        playTrack(radioTrack.idString, listOf(radioTrack), PlaylistSource.RADIO)
-    }
-
     /**
      * Starts music unless something already plays, once the saved session is restored (so a restored
      * track is not overridden). [resumeRestored]: continue the restored track (app launch) instead of
@@ -344,7 +334,7 @@ class PlaybackController @Inject constructor(
         _shuffleEnabled.value = enabled
         scope.launch { settingsRepository.setShuffleEnabled(enabled) }
         val current = _currentTrack.value ?: return
-        if (current.isRadio || !PlaybackQueue.shuffleApplies(_currentSource.value)) return
+        if (!PlaybackQueue.shuffleApplies(_currentSource.value)) return
         val queue = _currentPlaylist.value
         val index = queue.indexOfFirst { it.idString == current.idString }
         if (index < 0) return
@@ -404,10 +394,6 @@ class PlaybackController @Inject constructor(
             if (playlist.isNotEmpty()) playTrack(playlist.first().idString, playlist) else playAllLikedTracks()
             return
         }
-        if (current.isRadio) {
-            stepRadioStation(current, +1)
-            return
-        }
 
         // Repeat one: the track ended by itself, so it starts over
         if (isAuto && _repeatOne.value) {
@@ -458,10 +444,6 @@ class PlaybackController @Inject constructor(
 
     fun playPrev() {
         val current = _currentTrack.value ?: return
-        if (current.isRadio) {
-            stepRadioStation(current, -1)
-            return
-        }
         val playlist = _currentPlaylist.value
         val currentIndex = playlist.indexOfFirst { it.idString == current.idString }
         val prevIndex = PlaybackQueue.previousIndex(currentIndex, progress.value)
@@ -479,10 +461,10 @@ class PlaybackController @Inject constructor(
         _currentPlaylist.value = list
     }
 
-    /** Puts [track] right after the current one; with nothing (or radio) playing it just starts. */
+    /** Puts [track] right after the current one; with nothing playing it just starts. */
     fun enqueueNext(track: TrackDetailsDto) {
         val current = _currentTrack.value
-        if (current == null || current.isRadio) {
+        if (current == null) {
             playTrack(track.idString, listOf(track))
             return
         }
@@ -611,16 +593,6 @@ class PlaybackController @Inject constructor(
         _isStarting.value = true
         _streamQuality.value = null
 
-        if (track.isRadio) {
-            val station = stationFor(trackId)
-            if (station == null) {
-                _isStarting.value = false
-                return
-            }
-            playerRepository.playTrack(trackId, station.streamUrl, title, artist, coverUrl, crossfade, 0L)
-            return
-        }
-
         // Offline: streams cannot load, so move on to music that is on the device instead of failing
         if (isOffline() && !downloadManager.isKnownDownloaded(trackId)) {
             _isStarting.value = false
@@ -661,7 +633,7 @@ class PlaybackController @Inject constructor(
         if (failure.trackId != current.idString) return // stale event from a track we already left
 
         preloadManager.evictUrl(failure.trackId)
-        if (isOffline() && !current.isRadio && !downloadManager.isKnownDownloaded(current.idString)) {
+        if (isOffline() && !downloadManager.isKnownDownloaded(current.idString)) {
             // The network dropped mid-track: not a broken track, continue with downloaded music
             retriedTrackId = null
             skipToNextDownloaded(current)
@@ -675,7 +647,7 @@ class PlaybackController @Inject constructor(
         }
 
         consecutiveFailedTracks++
-        if (current.isRadio || consecutiveFailedTracks >= MAX_FAILED_TRACKS) {
+        if (consecutiveFailedTracks >= MAX_FAILED_TRACKS) {
             consecutiveFailedTracks = 0
             retriedTrackId = null
             _isStarting.value = false
@@ -683,7 +655,7 @@ class PlaybackController @Inject constructor(
             // Keep the track on screen so Play retries it.
             restoredPositionMs.value = failure.positionMs
             showMessage(
-                context.getString(if (current.isRadio) R.string.msg_station_unavailable else R.string.msg_playback_failed)
+                context.getString(R.string.msg_playback_failed)
             )
             return
         }
@@ -699,7 +671,7 @@ class PlaybackController @Inject constructor(
     )
 
     fun qualityDetails(): QualityDetails? {
-        val track = _currentTrack.value?.takeIf { !it.isRadio } ?: return null
+        val track = _currentTrack.value ?: return null
         val id = track.idString
         val hasPlus = authRepository.getActiveAccount()?.hasPlus
         return QualityDetails(
@@ -751,11 +723,6 @@ class PlaybackController @Inject constructor(
 
     /** Next downloaded track after [from] in the current queue, otherwise the offline mix. */
     private fun skipToNextDownloaded(from: TrackDetailsDto) {
-        if (from.isRadio) {
-            playerRepository.stop()
-            showMessage(context.getString(R.string.msg_station_unavailable))
-            return
-        }
         val queue = _currentPlaylist.value
         val start = queue.indexOfFirst { it.idString == from.idString }
         val next = PlaybackQueue.nextMatching(queue, start) { downloadManager.isKnownDownloaded(it.idString) }
@@ -764,7 +731,6 @@ class PlaybackController @Inject constructor(
 
     private fun prepareNextTrackInQueue() {
         val current = _currentTrack.value ?: return
-        if (current.isRadio) return
         if (_repeatOne.value) {
             prepareStandby(current)
             return
@@ -785,7 +751,6 @@ class PlaybackController @Inject constructor(
     }
 
     private fun prepareStandby(track: TrackDetailsDto) {
-        if (track.isRadio) return
         scope.launch {
             val nextId = track.idString
             val downloaded = downloadManager.isKnownDownloaded(nextId)
@@ -844,7 +809,7 @@ class PlaybackController @Inject constructor(
     }
 
     private fun recordTrackPlayed(trackId: String) {
-        if (trackId.isEmpty() || trackId.startsWith("radio_") || trackId in recentPlayedTrackIds) return
+        if (trackId.isEmpty() || trackId in recentPlayedTrackIds) return
         recentPlayedTrackIds.addLast(trackId)
         if (recentPlayedTrackIds.size > RECENT_LIMIT) recentPlayedTrackIds.removeFirst()
         val folder = activeUserFolder
@@ -861,26 +826,6 @@ class PlaybackController @Inject constructor(
             }
         }
     }
-
-    private fun stepRadioStation(current: TrackDetailsDto, step: Int) {
-        val stations = radioRepository.getBuiltinStations()
-        if (stations.isEmpty()) return
-        val index = stations.indexOfFirst { "radio_${it.id}" == current.idString }
-        if (index == -1) return
-        playRadioStation(stations[(index + step + stations.size) % stations.size])
-    }
-
-    private fun stationFor(trackId: String): RadioStation? =
-        radioRepository.getBuiltinStations().firstOrNull { "radio_${it.id}" == trackId }
-
-    private fun radioTrackFor(station: RadioStation) = TrackDetailsDto(
-        id = kotlinx.serialization.json.JsonPrimitive("radio_${station.id}"),
-        title = station.name,
-        artists = listOf(ArtistDto(id = kotlinx.serialization.json.JsonPrimitive("0"), name = "Прямой эфир • ${station.frequency}")),
-        coverUri = station.iconRes?.let { "android.resource://${BuildConfig.APPLICATION_ID}/$it" } ?: station.logoUrl.ifEmpty { null },
-        durationMs = 0,
-        isRadio = true
-    )
 
     private suspend fun persistSession() {
         val current = _currentTrack.value ?: return
@@ -914,8 +859,8 @@ class PlaybackController @Inject constructor(
         if (snapshot.userFolder != userFolder || _currentTrack.value != null) return
 
         val source = runCatching { PlaylistSource.valueOf(snapshot.source) }.getOrDefault(PlaylistSource.NONE)
-        // isRadio is @Transient, so it is rebuilt from the id prefix.
-        val queue = snapshot.queue.map { if (it.idString.startsWith("radio_")) it.copy(isRadio = true) else it }
+        // A session saved by an older version may still hold a radio station: it is dropped
+        val queue = snapshot.queue.filterNot { it.idString.startsWith("radio_") }
         val track = queue.firstOrNull { it.idString == snapshot.currentTrackId } ?: return
         // Shown paused, like Apple Music: Play continues from the saved position.
         _currentSource.value = source
@@ -925,7 +870,7 @@ class PlaybackController @Inject constructor(
             queue
         }
         _currentTrack.value = track
-        restoredPositionMs.value = if (track.isRadio) 0L else snapshot.positionMs
+        restoredPositionMs.value = snapshot.positionMs
     }
 
     private fun coverUrlFor(track: TrackDetailsDto): String? = track.coverUri?.let { uri ->

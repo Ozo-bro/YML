@@ -53,9 +53,7 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import com.korenskoy.yandexmusic.presentation.hifi.HiFiBackdrop
 import com.korenskoy.yandexmusic.presentation.hifi.HiFiMotion
 import com.korenskoy.yandexmusic.presentation.hifi.LocalArtworkTint
-import com.korenskoy.yandexmusic.presentation.hifi.LocalHiFiLite
 import com.korenskoy.yandexmusic.presentation.hifi.rememberArtworkTint
-import com.korenskoy.yandexmusic.presentation.hifi.rememberHiFiLite
 import com.korenskoy.yandexmusic.utils.toCoverUrl
 
 private const val PLAYER_COVER_KEY = "player_cover"
@@ -199,8 +197,7 @@ fun MainScreen(
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     // One tint for the whole app: the playing cover
-    val lite = rememberHiFiLite()
-    val coverForTint = if (shownTrack?.isRadio == true) null else shownTrack?.coverUri.toCoverUrl("200x200")
+    val coverForTint = shownTrack?.coverUri.toCoverUrl("200x200")
     val appTint = rememberArtworkTint(coverForTint)
     val waveActive = currentSource == PlaylistSource.VIBE && currentTrack != null
     val upcoming = remember(currentPlaylist, currentTrackId) {
@@ -215,7 +212,6 @@ fun MainScreen(
     androidx.compose.runtime.CompositionLocalProvider(
         com.korenskoy.yandexmusic.utils.LocalStreamQuality provides streamQuality,
         com.korenskoy.yandexmusic.presentation.main.components.LocalTrackMenu provides trackMenuLauncher,
-        LocalHiFiLite provides lite,
         LocalArtworkTint provides appTint
     ) {
         SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
@@ -386,7 +382,7 @@ fun MainScreen(
                             progress = { progressState.value },
                             durationMs = currentTrack?.durationMs ?: 0L,
                             onSeek = { viewModel.seekTo(it) },
-                            nextTrack = if (currentTrack?.isRadio == true) null else upcoming.firstOrNull(),
+                            nextTrack = upcoming.firstOrNull(),
                             source = currentSource,
                             isBuffering = isBuffering,
                             playlists = allPlaylists,
@@ -448,9 +444,7 @@ fun MainScreen(
                             onNextClick = { viewModel.playNext() },
                             onClick = { isPlayerExpanded = true },
                             onDismiss = { viewModel.stopAndClearPlayer() },
-                            coverModifier = if (lite || shownTrack.isRadio) Modifier else with(sharedScope) {
-                                Modifier.sharedElement(rememberSharedContentState(PLAYER_COVER_KEY), this@AnimatedVisibility)
-                            }
+                            coverModifier = Modifier
                         )
                     }
                 }
@@ -479,9 +473,7 @@ fun MainScreen(
                                     onNextClick = { viewModel.playNext() },
                                     onClick = { isPlayerExpanded = true },
                                     onDismiss = { viewModel.stopAndClearPlayer() },
-                                    coverModifier = if (lite || shownTrack.isRadio) Modifier else with(sharedScope) {
-                                        Modifier.sharedElement(rememberSharedContentState(PLAYER_COVER_KEY), this@AnimatedVisibility)
-                                    }
+                                    coverModifier = Modifier
                                 )
                             }
                             Spacer(modifier = Modifier.height(10.dp))
@@ -526,7 +518,7 @@ fun MainScreen(
                             },
                             onDislikeClick = { viewModel.dislikeTrack(shownTrack) },
                             onLoadMoreQueue = { viewModel.loadMoreQueue() },
-                            showShuffle = !shownTrack.isRadio && com.korenskoy.yandexmusic.data.player.PlaybackQueue.shuffleApplies(currentSource),
+                            showShuffle = com.korenskoy.yandexmusic.data.player.PlaybackQueue.shuffleApplies(currentSource),
                             shuffleEnabled = shuffleEnabled,
                             onToggleShuffle = { viewModel.toggleShuffle() },
                             isFetchingMoreQueue = isFetchingMoreQueue,
@@ -536,9 +528,7 @@ fun MainScreen(
                             onCancelSleepTimer = { viewModel.cancelSleepTimer() },
                             onAddToPlaylist = { trackMenu = TrackMenuRequest(shownTrack, null, pickPlaylist = true) },
                             onQualityClick = { qualityDetails = viewModel.qualityDetails() },
-                            coverModifier = if (lite || shownTrack.isRadio) Modifier else with(sharedScope) {
-                                Modifier.sharedElement(rememberSharedContentState(PLAYER_COVER_KEY), this@AnimatedVisibility)
-                            }
+                            coverModifier = Modifier
                         )
                     }
                 }

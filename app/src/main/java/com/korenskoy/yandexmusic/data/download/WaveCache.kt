@@ -80,7 +80,7 @@ class WaveCache @Inject constructor(
 
     /** Wave tracks coming up next: saved in the background unless they are on disk already. */
     fun prefetch(tracks: List<TrackDetailsDto>) {
-        tracks.filterNot { it.isRadio }.forEach { pending.trySend(it) }
+        tracks.forEach { pending.trySend(it) }
     }
 
     /** These tracks were downloaded by hand: never delete them as cache. */

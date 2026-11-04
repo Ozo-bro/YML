@@ -156,15 +156,6 @@ class LayoutSafetyTest {
     }
 
     @Test
-    fun testRadioStationResourceUriFormat() {
-        val controllerFile = File(sourceDir, "data/player/PlaybackController.kt").readText()
-        assertTrue("PlaybackController must use BuildConfig.APPLICATION_ID for radio resource uri",
-            controllerFile.contains("android.resource://\${BuildConfig.APPLICATION_ID}/\$it"))
-        org.junit.Assert.assertFalse("PlaybackController must not hardcode old package name in resource uri",
-            controllerFile.contains("android.resource://com.korenskoy.yandexmusic/"))
-    }
-
-    @Test
     fun testApplicationBrandingAndName() {
         val stringsXml = File("src/main/res/values/strings.xml").readText()
         assertTrue("strings.xml must declare app_name as Yandex Music Lite",
@@ -444,8 +435,6 @@ class LayoutSafetyTest {
             preloadManagerFile.contains("URL_TTL_MS = 45 * 60 * 1000L"))
         assertTrue("TrackPreloadManager must implement evictUrl",
             preloadManagerFile.contains("fun evictUrl(trackId: String)"))
-        assertTrue("TrackPreloadManager must skip radio streams",
-            preloadManagerFile.contains("trackId.startsWith(\"radio_\")"))
         assertTrue("TrackPreloadManager must check TTL expiration",
             preloadManagerFile.contains("System.currentTimeMillis() - cached.fetchedAtMs > URL_TTL_MS"))
 

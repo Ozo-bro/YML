@@ -24,7 +24,6 @@ import com.korenskoy.yandexmusic.presentation.car.LocalCarClock
 import com.korenskoy.yandexmusic.presentation.hifi.ArtworkTint
 import com.korenskoy.yandexmusic.presentation.hifi.HiFiBackdrop
 import com.korenskoy.yandexmusic.presentation.hifi.LocalArtworkTint
-import com.korenskoy.yandexmusic.presentation.hifi.LocalHiFiLite
 import com.korenskoy.yandexmusic.ui.theme.YandexMusicTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.JsonPrimitive
@@ -81,7 +80,7 @@ class CarSplitScreenshotTest {
         compose.mainClock.autoAdvance = false
         compose.setContent {
             YandexMusicTheme {
-                CompositionLocalProvider(LocalArtworkTint provides tint, LocalHiFiLite provides true, LocalCarClock provides { 1_792_567_800_000L }) {
+                CompositionLocalProvider(LocalArtworkTint provides tint, LocalCarClock provides { 1_792_567_800_000L }) {
                     Box(Modifier.fillMaxSize()) {
                         HiFiBackdrop(tint = tint)
                         CarScreen(

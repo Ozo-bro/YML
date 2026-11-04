@@ -10,7 +10,6 @@ import com.korenskoy.yandexmusic.R
 import com.korenskoy.yandexmusic.data.network.TrackDownloadManager
 import com.korenskoy.yandexmusic.data.dto.TrackDetailsDto
 import com.korenskoy.yandexmusic.data.repository.LibraryRepository
-import com.korenskoy.yandexmusic.data.repository.RadioRepository
 import com.korenskoy.yandexmusic.data.repository.UserPlaylistsRepository
 import com.korenskoy.yandexmusic.utils.toCoverUrl
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -19,14 +18,13 @@ import javax.inject.Singleton
 
 /**
  * Browse tree for Android Auto, Android Automotive and other media browsers:
- * My Wave, Liked, Downloaded and Radio. Playback requests go to [PlaybackController],
+ * My Wave, Liked, Downloaded and Playlists. Playback requests go to [PlaybackController],
  * so the car gets the same queue, crossfade and offline handling as the app.
  */
 @Singleton
 class MediaLibraryTree @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val libraryRepository: LibraryRepository,
-    private val radioRepository: RadioRepository,
     private val downloadManager: TrackDownloadManager,
     private val playbackController: PlaybackController,
     private val searchRepository: com.korenskoy.yandexmusic.data.repository.SearchRepository,
@@ -63,13 +61,6 @@ class MediaLibraryTree @Inject constructor(
                 folder(PLAYLIST_PREFIX + playlist.kindString, playlist.title.orEmpty(), MediaMetadata.MEDIA_TYPE_PLAYLIST)
                     .withArtwork(playlist.coverUri.toCoverUrl("400x400"))
             }
-            RADIO_ID -> radioRepository.getBuiltinStations().map { station ->
-                playable(
-                    RADIO_PREFIX + station.id, station.name, station.frequency,
-                    artwork = station.iconRes?.let { resourceUri(it) } ?: station.logoUrl.takeIf { it.isNotEmpty() }?.let(Uri::parse),
-                    mediaType = MediaMetadata.MEDIA_TYPE_RADIO_STATION
-                )
-            }
             else -> null
         }
     }
@@ -82,7 +73,6 @@ class MediaLibraryTree @Inject constructor(
             mediaId.startsWith(PLAYLIST_PREFIX) -> PLAYLISTS_ID
             mediaId.startsWith(LIKED_PREFIX) -> LIKED_ID
             mediaId.startsWith(DOWNLOADED_PREFIX) -> DOWNLOADED_ID
-            mediaId.startsWith(RADIO_PREFIX) -> RADIO_ID
             else -> ROOT_ID
         }
         return children(parent)?.firstOrNull { it.mediaId == mediaId }
@@ -106,18 +96,12 @@ class MediaLibraryTree @Inject constructor(
                 val (kind, trackId) = mediaId.removePrefix(PLAYLIST_TRACK_PREFIX).split('/', limit = 2).let { it[0] to it.getOrElse(1) { "" } }
                 queueAction(trackId, playlistTracks(kind).orEmpty(), liked)
             }
-            mediaId.startsWith(RADIO_PREFIX) -> radioRepository.getBuiltinStations()
-                .firstOrNull { it.id == mediaId.removePrefix(RADIO_PREFIX) }
-                ?.let { station -> { playbackController.playRadioStation(station) } }
             else -> null
         }
     }
 
-    /** "Play <station>" picks the station, anything else the top search results; My Wave when nothing matches. */
+    /** A voice query plays the top search results; My Wave when nothing matches. */
     private suspend fun searchAction(query: String): () -> Unit {
-        radioRepository.getBuiltinStations().firstOrNull { it.name.contains(query, ignoreCase = true) }?.let { station ->
-            return { playbackController.playRadioStation(station) }
-        }
         val found = try {
             searchRepository.searchTracks(query)
         } catch (e: kotlinx.coroutines.CancellationException) {
@@ -203,19 +187,16 @@ class MediaLibraryTree @Inject constructor(
         const val WAVE_ID = "wave"
         const val LIKED_ID = "liked"
         const val DOWNLOADED_ID = "downloaded"
-        const val RADIO_ID = "radio"
         const val PLAYLISTS_ID = "playlists"
         private const val PLAYLIST_PREFIX = "playlist/"
         private const val PLAYLIST_TRACK_PREFIX = "pltrack/"
         private const val LIKED_PREFIX = "liked/"
         private const val DOWNLOADED_PREFIX = "downloaded/"
-        private const val RADIO_PREFIX = "radio/"
 
         // Content style keys understood by Android Auto and Automotive OS
         private const val CONTENT_STYLE_SUPPORTED = "android.media.browse.CONTENT_STYLE_SUPPORTED"
         private const val CONTENT_STYLE_BROWSABLE_HINT = "android.media.browse.CONTENT_STYLE_BROWSABLE_HINT"
         private const val CONTENT_STYLE_PLAYABLE_HINT = "android.media.browse.CONTENT_STYLE_PLAYABLE_HINT"
         private const val CONTENT_STYLE_LIST = 1
-        private const val CONTENT_STYLE_GRID = 2
     }
 }

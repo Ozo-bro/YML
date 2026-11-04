@@ -100,12 +100,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.request.crossfade
-import com.korenskoy.yandexmusic.utils.browserUserAgent
 import coil3.compose.SubcomposeAsyncImage
 import coil3.request.ImageRequest
 import com.korenskoy.yandexmusic.data.dto.TrackDetailsDto
 import com.korenskoy.yandexmusic.presentation.player.components.AudioVisualizer
-import com.korenskoy.yandexmusic.presentation.player.components.RadioCoverCard
 import com.korenskoy.yandexmusic.utils.toCoverUrl
 import java.util.Locale
 import android.content.res.Configuration
@@ -150,20 +148,8 @@ fun FullScreenPlayer(
     
     val coverUrl = track.coverUri.toCoverUrl("1000x1000") ?: ""
 
-    // Subtle "breathing" of the cover — only while music plays and never in light mode (no idle frames)
-    val breathe = isPlaying && !com.korenskoy.yandexmusic.presentation.hifi.LocalHiFiLite.current
-    val coverScale = if (breathe) {
-        val infiniteTransition = rememberInfiniteTransition(label = "cover_breath")
-        infiniteTransition.animateFloat(
-            initialValue = 1f,
-            targetValue = 1.035f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(6000, easing = LinearEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "cover_scale"
-        ).value
-    } else 1f
+    // A still cover: no idle animation on weak head units
+    val coverScale = 1f
 
     var showQueue by remember { mutableStateOf(false) }
     var isDraggingSlider by remember { mutableStateOf(false) }
@@ -202,7 +188,7 @@ fun FullScreenPlayer(
     ) {
         // Living background: the app tint and (Android 12+) the cover itself, blurred
         com.korenskoy.yandexmusic.presentation.hifi.HiFiBackdrop(
-            coverUrl = if (track.isRadio) null else track.coverUri.toCoverUrl("400x400"),
+            coverUrl = track.coverUri.toCoverUrl("400x400"),
             bottomFade = false
         )
 
@@ -264,7 +250,7 @@ fun FullScreenPlayer(
                         )
                     }
                     // Keeps the title centred against the timer and queue buttons on the right
-                    if (!track.isRadio) Spacer(modifier = Modifier.width(48.dp))
+                    Spacer(modifier = Modifier.width(48.dp))
                     if (showShuffle) Spacer(modifier = Modifier.width(48.dp))
                 }
                 Text(
@@ -304,26 +290,24 @@ fun FullScreenPlayer(
                         onEndOfTrack = onSleepAtEndOfTrack,
                         onCancel = onCancelSleepTimer
                     )
-                    if (!track.isRadio) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                
-                                .clip(CircleShape)
-                                .background(
-                                    androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Surface)
-                                )
-                                
-                                .clickable { showQueue = true },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.QueueMusic,
-                                contentDescription = stringResource(R.string.cd_ochered),
-                                tint = Color.White,
-                                modifier = Modifier.size(22.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            
+                            .clip(CircleShape)
+                            .background(
+                                androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Surface)
                             )
-                        }
+                            
+                            .clickable { showQueue = true },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.QueueMusic,
+                            contentDescription = stringResource(R.string.cd_ochered),
+                            tint = Color.White,
+                            modifier = Modifier.size(22.dp)
+                        )
                     }
                 }
             }
@@ -368,41 +352,29 @@ fun FullScreenPlayer(
                     },
                 contentAlignment = Alignment.Center
             ) {
-                if (track.isRadio) {
-                    RadioCoverCard(
-                        coverUrl = coverUrl,
-                        stationName = track.title.orEmpty(),
-                        scale = coverScale,
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .wrapContentSize(Alignment.Center)
+                        .aspectRatio(1f)
+                        .then(coverModifier)
+                        
+                        .clip(RoundedCornerShape(20.dp))
+                ) {
+                    SubcomposeAsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(coverUrl)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = stringResource(R.string.cd_oblozhka),
+                        contentScale = ContentScale.Crop,
                         modifier = Modifier
                             .fillMaxSize()
-                            .wrapContentSize(Alignment.Center)
-                            .aspectRatio(1f)
+                            .graphicsLayer {
+                                scaleX = coverScale
+                                scaleY = coverScale
+                            }
                     )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .wrapContentSize(Alignment.Center)
-                            .aspectRatio(1f)
-                            .then(coverModifier)
-                            
-                            .clip(RoundedCornerShape(20.dp))
-                    ) {
-                        SubcomposeAsyncImage(
-                            model = ImageRequest.Builder(context)
-                                .data(coverUrl)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = stringResource(R.string.cd_oblozhka),
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .graphicsLayer {
-                                    scaleX = coverScale
-                                    scaleY = coverScale
-                                }
-                        )
-                    }
                 }
             }
 
@@ -413,7 +385,7 @@ fun FullScreenPlayer(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (!track.isRadio) Spacer(modifier = Modifier.width(44.dp))
+                Spacer(modifier = Modifier.width(44.dp))
                 Column(
                     modifier = Modifier.weight(1f),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -437,15 +409,13 @@ fun FullScreenPlayer(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                if (!track.isRadio) {
-                    IconButton(onClick = onAddToPlaylist, modifier = Modifier.size(44.dp)) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.PlaylistAdd,
-                            contentDescription = stringResource(R.string.track_context_menu_dobavit_v_pleylist),
-                            tint = Color.White.copy(alpha = 0.75f),
-                            modifier = Modifier.size(26.dp)
-                        )
-                    }
+                IconButton(onClick = onAddToPlaylist, modifier = Modifier.size(44.dp)) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.PlaylistAdd,
+                        contentDescription = stringResource(R.string.track_context_menu_dobavit_v_pleylist),
+                        tint = Color.White.copy(alpha = 0.75f),
+                        modifier = Modifier.size(26.dp)
+                    )
                 }
             }
 
@@ -463,73 +433,68 @@ fun FullScreenPlayer(
 
             Spacer(modifier = Modifier.weight(0.2f))
 
-            if (track.isRadio) {
-                Spacer(modifier = Modifier.height(16.dp))
-            } else {
-                // Premium Slim Progress Bar
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    val interactionSource = remember { MutableInteractionSource() }
-    
-                    Slider(
-                        value = activeFraction,
-                        onValueChange = { fraction ->
-                            isDraggingSlider = true
-                            sliderPosition = fraction
-                        },
-                        onValueChangeFinished = {
-                            isDraggingSlider = false
-                            onSeekTo((sliderPosition * durationMs).toLong())
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(20.dp),
-                        thumb = {
-                            Box(
-                                modifier = Modifier
-                                    .size(if (isDraggingSlider) 16.dp else 12.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.White)
-                                    
-                            )
-                        },
-                        track = { sliderState ->
-                            SliderDefaults.Track(
-                                sliderState = sliderState,
-                                modifier = Modifier.height(4.dp),
-                                colors = SliderDefaults.colors(
-                                    activeTrackColor = Color.White,
-                                    inactiveTrackColor = Color.White.copy(alpha = 0.2f)
-                                ),
-                                drawStopIndicator = null
-                            )
-                        },
-                        interactionSource = interactionSource
+            // Premium Slim Progress Bar
+            Column(modifier = Modifier.fillMaxWidth()) {
+                val interactionSource = remember { MutableInteractionSource() }
+
+                Slider(
+                    value = activeFraction,
+                    onValueChange = { fraction ->
+                        isDraggingSlider = true
+                        sliderPosition = fraction
+                    },
+                    onValueChangeFinished = {
+                        isDraggingSlider = false
+                        onSeekTo((sliderPosition * durationMs).toLong())
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(20.dp),
+                    thumb = {
+                        Box(
+                            modifier = Modifier
+                                .size(if (isDraggingSlider) 16.dp else 12.dp)
+                                .clip(CircleShape)
+                                .background(Color.White)
+                                
+                        )
+                    },
+                    track = { sliderState ->
+                        SliderDefaults.Track(
+                            sliderState = sliderState,
+                            modifier = Modifier.height(4.dp),
+                            colors = SliderDefaults.colors(
+                                activeTrackColor = Color.White,
+                                inactiveTrackColor = Color.White.copy(alpha = 0.2f)
+                            ),
+                            drawStopIndicator = null
+                        )
+                    },
+                    interactionSource = interactionSource
+                )
+
+                // Time indicators (Current / Remaining)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp, vertical = 2.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    val currentMs = (activeFraction * durationMs).toLong()
+                    Text(
+                        text = formatTime(currentMs),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White.copy(alpha = 0.55f),
+                        fontWeight = FontWeight.Medium
                     )
-    
-                    // Time indicators (Current / Remaining)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 4.dp, vertical = 2.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        val currentMs = (activeFraction * durationMs).toLong()
-                        Text(
-                            text = formatTime(currentMs),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.White.copy(alpha = 0.55f),
-                            fontWeight = FontWeight.Medium
-                        )
-                        Text(
-                            text = "-" + formatTime((durationMs - currentMs).coerceAtLeast(0L)),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.White.copy(alpha = 0.55f),
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
+                    Text(
+                        text = "-" + formatTime((durationMs - currentMs).coerceAtLeast(0L)),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White.copy(alpha = 0.55f),
+                        fontWeight = FontWeight.Medium
+                    )
                 }
             }
-
             Spacer(modifier = Modifier.height(if (isLandscape) 8.dp else 16.dp))
 
             // Controls Row (Liquid Glass aesthetic)
@@ -776,11 +741,6 @@ fun QueueDialogCard(
                         model = ImageRequest.Builder(context)
                             .data(itemCoverUrl)
                             .crossfade(true)
-                            .apply {
-                                if (item.isRadio) {
-                                    browserUserAgent()
-                                }
-                            }
                             .build(),
                         contentDescription = stringResource(R.string.cd_oblozhka),
                         contentScale = ContentScale.Crop,
@@ -945,57 +905,33 @@ fun PlayerMetadataAndUpNext(track: TrackDetailsDto, nextTrack: TrackDetailsDto?,
             .padding(horizontal = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        if (track.isRadio) {
-            // Radio Stream Quality Badge
+        // Real stream quality (codec and bitrate the player actually uses)
+        val quality = com.korenskoy.yandexmusic.utils.LocalStreamQuality.current
+        if (quality != null) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center
             ) {
+                // Tap: what plays and every variant the server offered
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
                         .background(Color.White.copy(alpha = 0.12f))
+                        .clickable(onClickLabel = stringResource(R.string.quality_details_title), onClick = onQualityClick)
                         .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
                     Text(
-                        text = stringResource(R.string.full_player_fm_stereo_128_kbps),
+                        text = quality,
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFF5AA0FF),
+                        color = Color.White.copy(alpha = 0.85f),
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp
                     )
                 }
             }
-        } else {
-            // Real stream quality (codec and bitrate the player actually uses)
-            val quality = com.korenskoy.yandexmusic.utils.LocalStreamQuality.current
-            if (quality != null) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    // Tap: what plays and every variant the server offered
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color.White.copy(alpha = 0.12f))
-                            .clickable(onClickLabel = stringResource(R.string.quality_details_title), onClick = onQualityClick)
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = quality,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.White.copy(alpha = 0.85f),
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
-                        )
-                    }
-                }
-            }
         }
-
         // Up Next Preview Card (Glassmorphism)
-        if (!track.isRadio && nextTrack != null) {
+        if (nextTrack != null) {
             val context = LocalContext.current
             val nextCoverUrl = nextTrack.coverUri.toCoverUrl("100x100") ?: ""
             
@@ -1031,19 +967,14 @@ fun PlayerMetadataAndUpNext(track: TrackDetailsDto, nextTrack: TrackDetailsDto?,
                     model = ImageRequest.Builder(context)
                         .data(nextCoverUrl)
                         .crossfade(true)
-                        .apply {
-                            if (nextTrack.isRadio) {
-                                browserUserAgent()
-                            }
-                        }
                         .build(),
                     contentDescription = stringResource(R.string.cd_oblozhka_sleduyuschego_treka),
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .size(36.dp)
                         .clip(RoundedCornerShape(8.dp)),
-                    loading = { if (nextTrack.isRadio) fallbackBadgeNext() },
-                    error = { if (nextTrack.isRadio) fallbackBadgeNext() }
+                    loading = { fallbackBadgeNext() },
+                    error = { fallbackBadgeNext() }
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Column(modifier = Modifier.weight(1f)) {
