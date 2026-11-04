@@ -38,6 +38,7 @@ class LikedTracksDownloadWorker(
         fun libraryRepository(): LibraryRepository
         fun playlistsRepository(): com.korenskoy.yandexmusic.data.repository.UserPlaylistsRepository
         fun waveCache(): WaveCache
+        fun lyricsRepository(): com.korenskoy.yandexmusic.data.lyrics.LyricsRepository
         fun downloadManager(): TrackDownloadManager
         fun preloadManager(): TrackPreloadManager
     }
@@ -93,7 +94,7 @@ class LikedTracksDownloadWorker(
                             downloads.downloadTrack(track.idString, stream.url, stream.quality, replace = true)
                     }
                 }
-                if (!ok) failed++
+                if (!ok) failed++ else deps.lyricsRepository().prefetch(track.idString) // lyrics offline too
             }
         } finally {
             if (single == null) downloads.setDownloadProgress(null)

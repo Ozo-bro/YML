@@ -35,6 +35,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
@@ -737,7 +738,17 @@ class PlaybackController @Inject constructor(
      * Set when the network failed although Android reports a connection (Wi-Fi to a phone hotspot that
      * lost its signal); cleared by a successful [probeInternet]. Android alone would call that "online".
      */
-    @Volatile private var networkDown = false
+    private val _networkDown = MutableStateFlow(false)
+    private var networkDown: Boolean
+        get() = _networkDown.value
+        set(value) { _networkDown.value = value }
+
+    /** No internet (no connection, or a connection that does not reach Yandex): for an "offline" badge. */
+    val offline: StateFlow<Boolean> = combine(
+        _networkDown,
+        networkMonitor.isConnectedFlow.onStart { emit(networkMonitor.isCurrentlyConnected()) }
+    ) { down, connected -> down || !connected }
+        .stateIn(scope, SharingStarted.Eagerly, false)
 
     private fun isOffline(): Boolean = networkDown || !networkMonitor.isCurrentlyConnected()
 

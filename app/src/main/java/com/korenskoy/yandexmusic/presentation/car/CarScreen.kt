@@ -31,6 +31,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
@@ -191,7 +192,9 @@ fun CarScreen(
     onQueueTrackClick: (String) -> Unit = {},
     /** Entering the screen with nothing playing; by default starts the wave right away. */
     onEnter: (() -> Unit)? = null,
-    onOpenSettings: (() -> Unit)? = null
+    onOpenSettings: (() -> Unit)? = null,
+    /** No internet: a badge in the top line (the music then comes from the downloads). */
+    offline: Boolean = false
 ) {
     androidx.activity.compose.BackHandler(onBack = onExit)
     var showPlaylists by remember { mutableStateOf(false) }
@@ -287,7 +290,7 @@ fun CarScreen(
             androidx.compose.material3.LocalTextStyle provides androidx.compose.material3.LocalTextStyle.current.copy(lineHeight = TextUnit.Unspecified)
         ) {
             Column(Modifier.fillMaxSize().systemBarsPadding()) {
-                CarHeader(u, sourceLabel, currentTrack, onExit, onOpenSettings)
+                CarHeader(u, sourceLabel, currentTrack, onExit, onOpenSettings, offline)
                 if (isLandscape) {
                     Row(
                         Modifier.fillMaxSize().padding(start = u(40f), end = u(40f), bottom = u(28f)),
@@ -327,7 +330,7 @@ private data class SourceItem(val source: CarSource, val icon: ImageVector, val 
 
 /** Top line: back, what plays (source · title · artist), the clock. */
 @Composable
-private fun CarHeader(u: Scale, sourceLabel: String, track: TrackDetailsDto?, onExit: () -> Unit, onOpenSettings: (() -> Unit)?) {
+private fun CarHeader(u: Scale, sourceLabel: String, track: TrackDetailsDto?, onExit: () -> Unit, onOpenSettings: (() -> Unit)?, offline: Boolean) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -363,6 +366,22 @@ private fun CarHeader(u: Scale, sourceLabel: String, track: TrackDetailsDto?, on
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+        }
+        if (offline) {
+            Spacer(Modifier.width(u(16f)))
+            // Hard to miss at a glance: amber, with the icon
+            Row(
+                Modifier
+                    .height(u(52f))
+                    .clip(RoundedCornerShape(u(26f)))
+                    .background(Color(0x33FFB74D))
+                    .padding(horizontal = u(18f)),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Rounded.CloudOff, contentDescription = null, tint = Color(0xFFFFB74D), modifier = Modifier.size(u(28f)))
+                Spacer(Modifier.width(u(10f)))
+                Text(stringResource(R.string.car_offline), color = Color(0xFFFFB74D), fontSize = u.sp(18f), fontWeight = FontWeight.Bold, maxLines = 1)
+            }
         }
         Spacer(Modifier.width(u(20f)))
         CarClock(u)

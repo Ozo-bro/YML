@@ -219,6 +219,7 @@
     <string name="car_repeat_off">Повторять трек</string>
     <string name="car_tab_lyrics">Текст</string>
     <string name="car_tab_queue">Очередь</string>
+    <string name="car_offline">Без интернета</string>
     <string name="car_rate_track">Оценить трек</string>
     <string name="settings_open_car_on_start">Открывать «В авто» при запуске</string>
     <string name="settings_open_car_on_start_hint">И сразу включать музыку: продолжить трек, на котором остановились, или Мою волну</string>

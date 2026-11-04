@@ -113,6 +113,7 @@ fun MainScreen(
     val startingPlaylistKind by playlistsVm.starting.collectAsState()
     val shuffleEnabled by viewModel.shuffleEnabled.collectAsState()
     val repeatOne by viewModel.repeatOne.collectAsState()
+    val offline by viewModel.offline.collectAsState()
     val lyricsState by lyricsVm.state.collectAsState()
     val showLyrics by lyricsVm.showLyrics.collectAsState()
     val steeringWheelOnLeft by viewModel.steeringWheelOnLeft.collectAsState()
@@ -208,9 +209,12 @@ fun MainScreen(
         if (index < 0) emptyList() else currentPlaylist.drop(index + 1).take(10)
     }
     val tabStates = rememberSaveableStateHolder()
-    val contentBottom = if (isLandscape) 90.dp else if (currentTrack != null) 168.dp else 100.dp
+    // Landscape (a head unit's split window): the pages end above the mini player instead of running
+    // under it, so nothing at the bottom is hidden or out of reach
+    val contentBottom = if (isLandscape) 16.dp else if (currentTrack != null) 168.dp else 100.dp
     // The mini-player stays out of the way on the wave page, which already shows the playing wave
     val showMini = shownTrack != null && currentTab != MainTab.CAR && !(currentTab == MainTab.HOME && waveActive)
+    val miniReserve = if (isLandscape && showMini) 92.dp else 0.dp
 
     androidx.compose.runtime.CompositionLocalProvider(
         com.korenskoy.yandexmusic.utils.LocalStreamQuality provides streamQuality,
@@ -233,7 +237,7 @@ fun MainScreen(
                         fadeOut(HiFiMotion.quick())
                 },
                 label = "tabs",
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize().padding(bottom = miniReserve)
             ) { tab ->
               tabStates.SaveableStateProvider(tab.route) {
                 // An artist or album page covers the tab until Back (or another tab) closes it
@@ -244,7 +248,7 @@ fun MainScreen(
                         currentTrackId = currentTrackId,
                         isPlaying = isPlaying,
                         likedTrackIds = likedTrackIds,
-                        contentBottom = if (isLandscape) 90.dp else if (currentTrack != null) 168.dp else 100.dp,
+                        contentBottom = contentBottom,
                         actions = catalogActions
                     )
                 } else when (tab) {
@@ -413,6 +417,7 @@ fun MainScreen(
                             },
                             onQueueTrackClick = { viewModel.playTrack(it, currentPlaylist) },
                             onEnter = { viewModel.startIfIdle(resumeRestored = false) },
+                            offline = offline,
                             onOpenSettings = {
                                 settingsFromCar = true
                                 openSettingsRequest = true

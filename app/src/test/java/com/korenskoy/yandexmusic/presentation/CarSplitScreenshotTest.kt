@@ -79,7 +79,7 @@ class CarSplitScreenshotTest {
         ).mapIndexed { i, text -> com.korenskoy.yandexmusic.data.lyrics.LyricLine(60_000L + i * 6_000L, text) }
     )
 
-    private fun show(shuffle: Boolean = true, withLyrics: Boolean = false) {
+    private fun show(shuffle: Boolean = true, withLyrics: Boolean = false, offline: Boolean = false) {
         compose.mainClock.autoAdvance = false
         compose.setContent {
             YandexMusicTheme {
@@ -94,7 +94,9 @@ class CarSplitScreenshotTest {
                             shuffleEnabled = shuffle,
                             lyrics = if (withLyrics) lyrics else null,
                             queue = listOf(next, track("3", "Кукушка", "Кино"), track("4", "Перемен", "Кино")),
-                            repeatOne = !shuffle
+                            repeatOne = !shuffle,
+                            offline = offline,
+                            onOpenSettings = {}
                         )
                     }
                 }
@@ -178,6 +180,10 @@ class CarSplitScreenshotTest {
         frames()
         snap("launcher_icon")
     }
+
+    @Test
+    @Config(qualifiers = "w1040dp-h610dp-land-mdpi")
+    fun splitWideOffline() { show(offline = true); snap("split_1040x610_offline") }
 
     // No split: the whole 1920×720 screen
     @Test

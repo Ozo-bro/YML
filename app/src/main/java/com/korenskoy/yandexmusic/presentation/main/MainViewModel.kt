@@ -97,6 +97,7 @@ class MainViewModel @Inject constructor(
     val currentSource: StateFlow<PlaylistSource> = playbackController.currentSource
     val shuffleEnabled: StateFlow<Boolean> = playbackController.shuffleEnabled
     val repeatOne: StateFlow<Boolean> = playbackController.repeatOne
+    val offline: StateFlow<Boolean> = playbackController.offline
     val currentPlaylist: StateFlow<List<TrackDetailsDto>> = playbackController.currentPlaylist
     val currentTrack: StateFlow<TrackDetailsDto?> = playbackController.currentTrack
     val currentTrackId: StateFlow<String?> = playbackController.currentTrack

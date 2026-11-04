@@ -39,7 +39,8 @@ class WaveCache @Inject constructor(
     private val downloadManager: TrackDownloadManager,
     private val preloadManager: TrackPreloadManager,
     private val settingsRepository: SettingsRepository,
-    private val json: Json
+    private val json: Json,
+    private val lyricsRepository: com.korenskoy.yandexmusic.data.lyrics.LyricsRepository
 ) {
     @Serializable
     data class Entry(val track: TrackDetailsDto, val addedAt: Long)
@@ -102,6 +103,7 @@ class WaveCache @Inject constructor(
         if (downloadManager.isTrackDownloaded(id)) return // cached already, or downloaded by hand
         val stream = preloadManager.resolveForDownload(id) ?: return
         if (!downloadManager.downloadTrack(id, stream.url, stream.quality)) return
+        lyricsRepository.prefetch(id) // offline, the saved track shows its lyrics too
         mutex.withLock {
             entries.removeAll { it.track.idString == id }
             entries += Entry(track, System.currentTimeMillis())
