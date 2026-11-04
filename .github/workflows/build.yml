@@ -13,6 +13,10 @@ on:
 permissions:
   contents: write
 
+# Maven Central sometimes answers 429 (too many requests): let Gradle retry longer before failing
+env:
+  GRADLE_OPTS: -Dorg.gradle.internal.repository.max.retries=8 -Dorg.gradle.internal.repository.initial.backoff=2000
+
 concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: true
