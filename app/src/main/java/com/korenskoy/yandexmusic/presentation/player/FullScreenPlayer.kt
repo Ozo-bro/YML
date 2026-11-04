@@ -252,13 +252,7 @@ fun FullScreenPlayer(
                             .background(
                                 androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Surface)
                             )
-                            .border(
-                                BorderStroke(
-                                    1.dp,
-                                    androidx.compose.ui.graphics.SolidColor(Color.Transparent)
-                                ),
-                                CircleShape
-                            )
+                            
                             .clickable { onCollapse() },
                         contentAlignment = Alignment.Center
                     ) {
@@ -292,7 +286,7 @@ fun FullScreenPlayer(
                                 .size(40.dp)
                                 .clip(CircleShape)
                                 .background(if (shuffleEnabled) Color(0x550A6CFF) else Color(0x352A2A38))
-                                .border(BorderStroke(1.dp, if (shuffleEnabled) Color(0xFF0A6CFF) else Color(0x40FFFFFF)), CircleShape)
+                                
                                 .clickable(onClickLabel = shuffleLabel) { onToggleShuffle() },
                             contentAlignment = Alignment.Center
                         ) {
@@ -319,13 +313,7 @@ fun FullScreenPlayer(
                                 .background(
                                     androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Surface)
                                 )
-                                .border(
-                                    BorderStroke(
-                                        1.dp,
-                                        androidx.compose.ui.graphics.SolidColor(Color.Transparent)
-                                    ),
-                                    CircleShape
-                                )
+                                
                                 .clickable { showQueue = true },
                             contentAlignment = Alignment.Center
                         ) {
@@ -565,13 +553,7 @@ fun FullScreenPlayer(
                         .background(
                             androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Surface)
                         )
-                        .border(
-                            BorderStroke(
-                                1.2.dp,
-                                androidx.compose.ui.graphics.SolidColor(Color.Transparent)
-                            ),
-                            CircleShape
-                        )
+                        
                 ) {
                     Icon(
                         imageVector = Icons.Default.SkipPrevious,
@@ -581,13 +563,14 @@ fun FullScreenPlayer(
                     )
                 }
 
-                // Play / Pause: the metal knob of the Hi-Fi language
+                // Play / Pause: the white main button, as in the car screen
                 com.korenskoy.yandexmusic.presentation.hifi.HiFiKnob(
                     onClick = onPlayPauseClick,
                     contentDescription = stringResource(R.string.cd_vosproizvedenie_ili_pauza),
-                    size = if (isLandscape) 68.dp else 82.dp
+                    size = if (isLandscape) 68.dp else 82.dp,
+                    primary = true
                 ) {
-                    com.korenskoy.yandexmusic.presentation.hifi.PlayPauseGlyph(isPlaying = isPlaying, size = if (isLandscape) 30.dp else 36.dp)
+                    com.korenskoy.yandexmusic.presentation.hifi.PlayPauseGlyph(isPlaying = isPlaying, size = if (isLandscape) 30.dp else 36.dp, tint = com.korenskoy.yandexmusic.presentation.hifi.HiFi.Ground)
                 }
 
                 // Next Track Button
@@ -600,13 +583,7 @@ fun FullScreenPlayer(
                         .background(
                             androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Surface)
                         )
-                        .border(
-                            BorderStroke(
-                                1.2.dp,
-                                androidx.compose.ui.graphics.SolidColor(Color.Transparent)
-                            ),
-                            CircleShape
-                        )
+                        
                 ) {
                     Icon(
                         imageVector = Icons.Default.SkipNext,
@@ -727,10 +704,7 @@ fun QueueDialogCard(
             .background(
                 androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Surface)
             )
-            .border(
-                BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
-                RoundedCornerShape(24.dp)
-            )
+            
             .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
         // Header
@@ -940,12 +914,12 @@ fun LikeHeartButton(
             
             .clip(CircleShape)
             .background(androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Surface))
-            .border(BorderStroke(1.dp, androidx.compose.ui.graphics.SolidColor(Color.Transparent)), CircleShape)
+            
     ) {
         Icon(
             imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
             contentDescription = stringResource(R.string.cd_nravitsya),
-            tint = if (isLiked) Color(0xFF0A6CFF) else Color.White.copy(alpha = 0.72f),
+            tint = if (isLiked) com.korenskoy.yandexmusic.presentation.hifi.HiFi.Like else Color.White.copy(alpha = 0.72f),
             modifier = Modifier
                 .size(24.dp)
                 .graphicsLayer {
@@ -1128,13 +1102,7 @@ fun DislikeButton(
             .background(
                 androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Surface)
             )
-            .border(
-                BorderStroke(
-                    1.2.dp,
-                    androidx.compose.ui.graphics.SolidColor(Color.Transparent)
-                ),
-                CircleShape
-            )
+            
     ) {
         Icon(
             imageVector = Icons.Outlined.HeartBroken,
@@ -1165,7 +1133,7 @@ private fun SleepTimerButton(
                 .size(40.dp)
                 .clip(CircleShape)
                 .background(if (state != null) Color(0x550A6CFF) else Color(0x352A2A38))
-                .border(BorderStroke(1.dp, Color(0x40FFFFFF)), CircleShape)
+                
                 .clickable { expanded = true },
             contentAlignment = Alignment.Center
         ) {

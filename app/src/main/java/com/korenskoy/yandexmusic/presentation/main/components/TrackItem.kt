@@ -162,30 +162,14 @@ fun TrackItem(
                 .size(34.dp)
                 
                 .clip(CircleShape)
-                .background(
-                    if (isLiked) {
-                        androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Accent)
-                    } else {
-                        androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Surface)
-                    }
-                )
-                .border(
-                    BorderStroke(
-                        1.dp,
-                        if (isLiked) {
-                            androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Accent)
-                        } else {
-                            androidx.compose.ui.graphics.SolidColor(Color.Transparent)
-                        }
-                    ),
-                    CircleShape
-                )
+                .background(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Surface)
+                
                 .clickable { onToggleLike() },
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                tint = if (isLiked) Color(0xFF0A6CFF) else Color.White.copy(alpha = 0.45f),
+                tint = if (isLiked) com.korenskoy.yandexmusic.presentation.hifi.HiFi.Like else Color.White.copy(alpha = 0.45f),
                 contentDescription = stringResource(R.string.cd_nravitsya),
                 modifier = Modifier.size(17.dp)
             )

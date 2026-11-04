@@ -74,12 +74,7 @@ fun AccountManagementDialog(
                     .wrapContentHeight()
                     .clickable(enabled = false) {}
                     .clip(RoundedCornerShape(26.dp))
-                    .border(
-                        BorderStroke(1.dp, Brush.verticalGradient(
-                            listOf(Color.White.copy(alpha = 0.22f), Color.White.copy(alpha = 0.05f))
-                        )),
-                        RoundedCornerShape(26.dp)
-                    ),
+                    ,
                 color = Color(0xFF141419),
                 tonalElevation = 8.dp
             ) {
@@ -163,13 +158,7 @@ fun AccountManagementDialog(
                                                 )
                                             }
                                         )
-                                        .border(
-                                            BorderStroke(
-                                                1.dp,
-                                                if (isActive) Color(0x660A6CFF) else Color.White.copy(alpha = 0.08f)
-                                            ),
-                                            RoundedCornerShape(16.dp)
-                                        )
+                                        
                                         .clickable(enabled = !isActive) {
                                             onSwitchAccount(account.uid)
                                             onDismiss()
@@ -269,7 +258,7 @@ fun AccountManagementDialog(
                                             modifier = Modifier
                                                 .clip(RoundedCornerShape(8.dp))
                                                 .background(Color(0x2800E676))
-                                                .border(BorderStroke(1.dp, Color(0x6600E676)), RoundedCornerShape(8.dp))
+                                                
                                                 .padding(horizontal = 8.dp, vertical = 3.dp),
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {

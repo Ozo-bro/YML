@@ -438,7 +438,7 @@ internal fun CoverCard(track: TrackDetailsDto, modifier: Modifier = Modifier, on
                 
                 .clip(RoundedCornerShape(16.dp))
                 .background(Color(0xFF1C1F28))
-                .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(16.dp))
+                
         )
         Spacer(Modifier.height(9.dp))
         Text(track.title ?: "Без названия", style = HiFiType.CardTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -506,7 +506,7 @@ private fun PlaylistsPage(
                                     .aspectRatio(1f)
                                     .clip(RoundedCornerShape(16.dp))
                                     .background(Color.White.copy(alpha = 0.06f))
-                                    .border(1.dp, Color.White.copy(alpha = 0.14f), RoundedCornerShape(16.dp)),
+                                    ,
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(Icons.Rounded.Add, contentDescription = null, tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size(40.dp))

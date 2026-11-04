@@ -61,6 +61,8 @@ fun HiFiKnob(
     contentDescription: String,
     size: Dp,
     modifier: Modifier = Modifier,
+    /** The main play button: white with a dark glyph (pass the glyph tint [HiFi.Ground]). */
+    primary: Boolean = false,
     content: @Composable BoxScope.() -> Unit
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -81,7 +83,7 @@ fun HiFiKnob(
             }
             // Flat: a solid round surface
             .clip(CircleShape)
-            .background(HiFi.Surface)
+            .background(if (primary) Color.White else HiFi.Surface)
             .clip(CircleShape)
             .clickable(interactionSource = interaction, indication = null, role = Role.Button) {
                 view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
@@ -150,7 +152,8 @@ fun SpectrumRing(
     playedColor: Color = Color.White.copy(alpha = 0.95f),
     restColor: Color = Color.White.copy(alpha = 0.26f)
 ) {
-    val lite = LocalHiFiLite.current
+    // Flat design: always the clean progress ring, never the equalizer bars
+    val lite = true
     val animate = !lite && mode != RingMode.Paused
     val clock: State<Float> = if (animate) {
         val transition = rememberInfiniteTransition(label = "spectrum")

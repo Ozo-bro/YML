@@ -77,15 +77,7 @@ fun UpdateDialog(
                         )
                     )
                 )
-                .border(
-                    BorderStroke(
-                        1.2.dp,
-                        Brush.verticalGradient(
-                            listOf(Color(0xFF0A6CFF).copy(alpha = 0.45f), Color(0x33FFFFFF))
-                        )
-                    ),
-                    RoundedCornerShape(26.dp)
-                )
+                
                 .padding(22.dp)
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
@@ -182,10 +174,7 @@ fun UpdateDialog(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
                         .background(Color.White.copy(alpha = 0.04f))
-                        .border(
-                            BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
-                            RoundedCornerShape(16.dp)
-                        )
+                        
                         .padding(14.dp)
                 ) {
                     Text(
@@ -280,7 +269,7 @@ fun UpdateDialog(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(14.dp))
                             .background(Color(0xFFFF9900).copy(alpha = 0.15f))
-                            .border(BorderStroke(1.dp, Color(0xFFFF9900).copy(alpha = 0.45f)), RoundedCornerShape(14.dp))
+                            
                             .padding(14.dp)
                     ) {
                         Column {
@@ -317,7 +306,7 @@ fun UpdateDialog(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(14.dp))
                             .background(Color(0xFFFF9900).copy(alpha = 0.12f))
-                            .border(BorderStroke(1.dp, Color(0xFFFF9900).copy(alpha = 0.35f)), RoundedCornerShape(14.dp))
+                            
                             .clickable { onRequestPermission() }
                             .padding(horizontal = 12.dp, vertical = 10.dp)
                     ) {
@@ -370,7 +359,7 @@ fun UpdateDialog(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(14.dp))
                                 .background(Color.White.copy(alpha = 0.1f))
-                                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)), RoundedCornerShape(14.dp))
+                                
                                 .clickable { onShareOrSave() }
                                 .padding(horizontal = 14.dp, vertical = 10.dp)
                         ) {

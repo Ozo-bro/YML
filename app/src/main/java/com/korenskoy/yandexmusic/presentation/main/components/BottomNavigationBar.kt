@@ -57,7 +57,7 @@ private fun Modifier.glassBar(): Modifier = this
     
     .clip(BarShape)
     .background(HiFi.BarFill)
-    .border(1.dp, Color.White.copy(alpha = 0.14f), BarShape)
+    
 
 /**
  * The tab bar: a floating glass capsule with five tabs in the usual order. The light pill under the

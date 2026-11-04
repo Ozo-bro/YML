@@ -65,10 +65,7 @@ fun RadioCoverCard(
                     radius = 900f
                 )
             )
-            .border(
-                BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
-                RoundedCornerShape(24.dp)
-            ),
+            ,
         contentAlignment = Alignment.Center
     ) {
 
@@ -92,7 +89,7 @@ fun RadioCoverCard(
                     .padding(14.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(Color.Black.copy(alpha = 0.6f))
-                    .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(8.dp))
+                    
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Box(

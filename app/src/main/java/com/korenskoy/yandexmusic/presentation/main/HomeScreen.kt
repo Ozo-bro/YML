@@ -169,9 +169,10 @@ private fun WaveInstrument(knobSize: Dp, mode: RingMode, isPlaying: Boolean, pro
         HiFiKnob(
             onClick = onPlayPause,
             contentDescription = stringResource(if (isPlaying) R.string.wave_pause else R.string.wave_play),
-            size = knobSize
+            size = knobSize,
+            primary = true
         ) {
-            PlayPauseGlyph(isPlaying = isPlaying, size = knobSize * 0.3f)
+            PlayPauseGlyph(isPlaying = isPlaying, size = knobSize * 0.3f, tint = HiFi.Ground)
         }
     }
 }
@@ -218,7 +219,7 @@ private fun WaveTrackInfo(track: TrackDetailsDto?, isLiked: Boolean, onLike: () 
                     Icon(
                         if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                         contentDescription = null,
-                        tint = if (isLiked) HiFi.Accent else Color.White.copy(alpha = 0.86f),
+                        tint = if (isLiked) HiFi.Like else Color.White.copy(alpha = 0.86f),
                         modifier = Modifier.size(21.dp)
                     )
                 }

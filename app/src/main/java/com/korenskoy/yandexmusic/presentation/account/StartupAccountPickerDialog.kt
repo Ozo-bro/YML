@@ -64,15 +64,7 @@ fun StartupAccountPickerDialog(
                     .widthIn(max = 440.dp)
                     .wrapContentHeight()
                     .clip(RoundedCornerShape(26.dp))
-                    .border(
-                        BorderStroke(
-                            1.2.dp,
-                            Brush.verticalGradient(
-                                listOf(Color(0xFF0A6CFF).copy(alpha = 0.45f), Color.White.copy(alpha = 0.08f))
-                            )
-                        ),
-                        RoundedCornerShape(26.dp)
-                    ),
+                    ,
                 color = Color(0xFF141419),
                 tonalElevation = 10.dp
             ) {
@@ -160,13 +152,7 @@ fun StartupAccountPickerDialog(
                                             )
                                         }
                                     )
-                                    .border(
-                                        BorderStroke(
-                                            1.dp,
-                                            if (isSelected) Color(0xFF0A6CFF) else Color.White.copy(alpha = 0.08f)
-                                        ),
-                                        RoundedCornerShape(16.dp)
-                                    )
+                                    
                                     .clickable { selectedUid = account.uid }
                                     .padding(horizontal = 14.dp, vertical = 11.dp),
                                 verticalAlignment = Alignment.CenterVertically

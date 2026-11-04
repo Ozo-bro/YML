@@ -30,6 +30,8 @@ object HiFi {
     /** The selected/"on" fill of a control. */
     val SelectedFill = Color(0x383D8BFF)
     val Accent = Color(0xFF3D8BFF)
+    /** A liked track's heart. */
+    val Like = Color(0xFFFF4D6D)
     val TextPrimary = Color.White
     val TextSecondary = Color.White.copy(alpha = 0.66f)
     val TextTertiary = Color.White.copy(alpha = 0.55f)

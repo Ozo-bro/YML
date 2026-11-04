@@ -101,7 +101,7 @@ fun CatalogPageScreen(
                         .size(40.dp)
                         .clip(CircleShape)
                         .background(Color(0x352A2A38))
-                        .border(BorderStroke(1.dp, Color(0x40FFFFFF)), CircleShape)
+                        
                         .clickable(onClick = actions.onBack),
                     contentAlignment = Alignment.Center
                 ) {
@@ -275,16 +275,16 @@ private fun PlayButton(icon: ImageVector, label: String, primary: Boolean, modif
             .height(42.dp)
             .clip(CircleShape)
             .background(
-                if (primary) androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Accent)
+                if (primary) androidx.compose.ui.graphics.SolidColor(Color.White)
                 else androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Surface)
             )
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = if (primary) 0.6f else 0.25f)), CircleShape)
+            
             .clickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
-        Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+        Icon(icon, contentDescription = null, tint = if (primary) com.korenskoy.yandexmusic.presentation.hifi.HiFi.Ground else Color.White, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(6.dp))
-        Text(label, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        Text(label, color = if (primary) com.korenskoy.yandexmusic.presentation.hifi.HiFi.Ground else Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
     }
 }

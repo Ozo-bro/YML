@@ -93,7 +93,7 @@ fun MiniPlayer(
             
             .clip(MiniShape)
             .background(HiFi.BarFill)
-            .border(1.dp, Color.White.copy(alpha = 0.12f), MiniShape)
+            
             .clickable(role = Role.Button, onClickLabel = stringResource(R.string.cd_razvernut_pleer), onClick = onClick)
             .pointerInput(Unit) {
                 detectHorizontalDragGestures(
@@ -183,9 +183,10 @@ fun MiniPlayer(
             HiFiKnob(
                 onClick = onPlayPauseClick,
                 contentDescription = stringResource(R.string.cd_vosproizvedenie_ili_pauza),
-                size = 44.dp
+                size = 44.dp,
+                primary = true
             ) {
-                PlayPauseGlyph(isPlaying = isPlaying, size = 22.dp)
+                PlayPauseGlyph(isPlaying = isPlaying, size = 22.dp, tint = com.korenskoy.yandexmusic.presentation.hifi.HiFi.Ground)
             }
             Box(
                 modifier = Modifier

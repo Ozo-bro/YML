@@ -165,8 +165,8 @@ fun PlaylistScreen(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(Color(0x352A2A38))
-                    .border(BorderStroke(1.dp, Color(0x40FFFFFF)), CircleShape)
+                    .background(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Surface)
+                    
                     .clickable(onClick = onBack),
                 contentAlignment = Alignment.Center
             ) {
@@ -199,8 +199,8 @@ fun PlaylistScreen(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
-                        .background(Color(0x352A2A38))
-                        .border(BorderStroke(1.dp, Color(0x40FFFFFF)), CircleShape)
+                        .background(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Surface)
+                        
                         .clickable { showMenu = true },
                     contentAlignment = Alignment.Center
                 ) {
@@ -293,7 +293,7 @@ fun PlaylistScreen(
                     .size(42.dp)
                     .clip(CircleShape)
                     .background(androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Surface))
-                    .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)), CircleShape)
+                    
                     .clickable(enabled = enabled && !allSaved, onClickLabel = downloadLabel, onClick = onDownload),
                 contentAlignment = Alignment.Center
             ) {
@@ -347,7 +347,7 @@ fun PlaylistScreen(
                         .navigationBarsPadding()
                         .padding(horizontal = 8.dp)
                         .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-                        .background(Color(0x1AFFFFFF))
+                        .background(Color.Transparent)
                         .padding(8.dp)
                 ) {
                     items(opened.tracks, key = { it.idString }) { track ->
@@ -391,7 +391,7 @@ private fun ReorderList(
             .navigationBarsPadding()
             .padding(horizontal = 8.dp)
             .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-            .background(Color(0x1AFFFFFF))
+            .background(Color.Transparent)
             .padding(8.dp)
     ) {
         itemsIndexed(tracks, key = { _, track -> track.idString }) { index, track ->
@@ -468,16 +468,16 @@ private fun PlaylistAction(
             .height(42.dp)
             .clip(CircleShape)
             .background(
-                if (primary) androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Accent)
+                if (primary) androidx.compose.ui.graphics.SolidColor(Color.White)
                 else androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Surface)
             )
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = if (primary) 0.6f else 0.25f)), CircleShape)
+            
             .clickable(enabled = enabled, onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
-        Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+        Icon(icon, contentDescription = null, tint = if (primary) com.korenskoy.yandexmusic.presentation.hifi.HiFi.Ground else Color.White, modifier = Modifier.size(20.dp))
         Spacer(modifier = Modifier.width(6.dp))
-        Text(label, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        Text(label, color = if (primary) com.korenskoy.yandexmusic.presentation.hifi.HiFi.Ground else Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
     }
 }
