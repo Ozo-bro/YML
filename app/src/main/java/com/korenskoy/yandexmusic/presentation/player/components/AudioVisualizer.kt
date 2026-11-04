@@ -81,7 +81,7 @@ fun AudioVisualizer(
                         }
                     }
                     .clip(RoundedCornerShape(50))
-                    .background(MaterialTheme.colorScheme.primary)
+                    .background(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.6f))
             )
         }
     }
