@@ -137,6 +137,9 @@ fun MainScreen(
 
     var currentTab by rememberSaveable { mutableStateOf(MainTab.HOME) }
     val openCarModeOnStart by viewModel.openCarModeOnStart.collectAsState()
+    // The car screen's settings button: open the settings sheet, come back to the car screen after
+    var openSettingsRequest by remember { mutableStateOf(false) }
+    var settingsFromCar by remember { mutableStateOf(false) }
     // App start: straight into the car screen with the music on (a setting, on by default)
     LaunchedEffect(Unit) {
         if (viewModel.takeCarLaunch()) {
@@ -322,6 +325,14 @@ fun MainScreen(
                         waveCacheLimitMb = waveCacheLimitMb,
                         waveCacheUsedBytes = waveCacheUsedBytes,
                         onWaveCacheLimitChange = { viewModel.setWaveCacheLimitMb(it) },
+                        openSettingsRequest = openSettingsRequest,
+                        onSettingsRequestHandled = { openSettingsRequest = false },
+                        onSettingsClosed = {
+                            if (settingsFromCar) {
+                                settingsFromCar = false
+                                currentTab = MainTab.CAR
+                            }
+                        },
                         openCarModeOnStart = openCarModeOnStart,
                         onOpenCarModeOnStartChange = { viewModel.setOpenCarModeOnStart(it) },
                         steeringWheelOnLeft = steeringWheelOnLeft,
@@ -401,7 +412,13 @@ fun MainScreen(
                                 if (index < 0) emptyList() else currentPlaylist.drop(index + 1).take(50)
                             },
                             onQueueTrackClick = { viewModel.playTrack(it, currentPlaylist) },
-                            onEnter = { viewModel.startIfIdle(resumeRestored = false) }
+                            onEnter = { viewModel.startIfIdle(resumeRestored = false) },
+                            onOpenSettings = {
+                                settingsFromCar = true
+                                openSettingsRequest = true
+                                playlistsVm.close() // the library's own page, not an opened playlist
+                                currentTab = MainTab.LIBRARY
+                            }
                         )
                     }
                 }

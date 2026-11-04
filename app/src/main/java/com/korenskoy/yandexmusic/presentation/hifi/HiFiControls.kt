@@ -119,7 +119,8 @@ fun GlassCircleButton(
     onClick: () -> Unit,
     contentDescription: String,
     modifier: Modifier = Modifier,
-    size: Dp = 40.dp,
+    // Big enough to hit in a car
+    size: Dp = 52.dp,
     content: @Composable BoxScope.() -> Unit
 ) {
     Box(
@@ -222,30 +223,23 @@ fun IconPlaque(icon: ImageVector, modifier: Modifier = Modifier, size: Dp = 34.d
         modifier = modifier
             .size(size)
             .clip(RoundedCornerShape(size * 0.28f))
-            .background(
-                Brush.verticalGradient(
-                    if (danger) listOf(HiFi.Danger.copy(alpha = 0.18f), HiFi.Danger.copy(alpha = 0.06f))
-                    else listOf(Color.White.copy(alpha = 0.13f), Color.White.copy(alpha = 0.04f))
-                )
-            )
-            .drawBehind {
-                drawLine(Color.White.copy(alpha = 0.18f), Offset(size.toPx() * 0.15f, 0.5f), Offset(this.size.width - size.toPx() * 0.15f, 0.5f), 1f)
-            },
+            .background(if (danger) HiFi.Danger.copy(alpha = 0.15f) else HiFi.SurfaceHigh),
         contentAlignment = Alignment.Center
     ) {
         Icon(icon, contentDescription = null, tint = if (danger) HiFi.Danger else tint, modifier = Modifier.size(size * 0.56f))
     }
 }
 
-/** Segmented control: a recessed track with a metal piece sliding under the selected option. */
+/** Segmented control: a dark track with a raised piece sliding under the selected option (as the car tabs). */
 @Composable
 fun HiFiSegmented(options: List<String>, selectedIndex: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .height(44.dp)
-            .hifiRecessed(22.dp)
-            .padding(3.dp)
+            .height(48.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(HiFi.Ground)
+            .padding(4.dp)
     ) {
         val segment = maxWidth / options.size
         val offset by animateDpAsState(segment * selectedIndex, HiFiMotion.spring(), label = "segment")
@@ -254,7 +248,8 @@ fun HiFiSegmented(options: List<String>, selectedIndex: Int, onSelect: (Int) -> 
                 .offset { IntOffset(offset.roundToPx(), 0) }
                 .width(segment)
                 .fillMaxHeight()
-                .hifiAnodized(RoundedCornerShape(19.dp))
+                .clip(RoundedCornerShape(20.dp))
+                .background(HiFi.SurfaceHigh)
         )
         Row(Modifier.fillMaxWidth().fillMaxHeight()) {
             options.forEachIndexed { index, label ->

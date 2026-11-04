@@ -23,6 +23,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -196,6 +197,14 @@ class PlaybackController @Inject constructor(
             }
         }
 
+        // While the connection is known to be dead, check every 30 s whether Yandex answers again
+        scope.launch {
+            while (true) {
+                delay(PROBE_INTERVAL_MS)
+                if (networkDown && networkMonitor.isCurrentlyConnected()) probeInternet()
+            }
+        }
+
         scope.launch {
             try {
                 loadUserState(activeUserFolder, restoreSession = true)
@@ -288,7 +297,7 @@ class PlaybackController @Inject constructor(
                 playTrack(list.first().idString, list, PlaylistSource.VIBE)
             } else {
                 _isStarting.value = false
-                showMessage(context.getString(R.string.msg_wave_load_failed))
+                if (isOffline()) playOfflineMix() else showMessage(context.getString(R.string.msg_wave_load_failed))
             }
         }
     }
@@ -429,6 +438,10 @@ class PlaybackController @Inject constructor(
                 val request = ++startRequestId
                 fetchMoreVibeTracks { _ ->
                     if (request != startRequestId) return@fetchMoreVibeTracks
+                    if (isOffline()) {
+                        skipToNextDownloaded(current)
+                        return@fetchMoreVibeTracks
+                    }
                     val updated = _currentPlaylist.value
                     val newIndex = updated.indexOfFirst { it.idString == currentId }
                     when {
@@ -611,6 +624,12 @@ class PlaybackController @Inject constructor(
         currentPlayJob = scope.launch {
             val url = preloadManager.getOrFetchUrl(trackId)
                 ?: run {
+                    // Nothing came back: with a dead connection go to the downloaded music right away
+                    if (!probeInternet()) {
+                        _isStarting.value = false
+                        skipToNextDownloaded(track)
+                        return@launch
+                    }
                     delay(URL_RETRY_DELAY_MS)
                     preloadManager.getOrFetchUrl(trackId)
                 }
@@ -639,6 +658,22 @@ class PlaybackController @Inject constructor(
             skipToNextDownloaded(current)
             return
         }
+        // A network error while Android still reports a connection: find out whether it is really online
+        if (failure.reason.startsWith("ERROR_CODE_IO") && !downloadManager.isKnownDownloaded(current.idString)) {
+            scope.launch {
+                if (probeInternet()) {
+                    continueAfterFailure(failure, current)
+                } else {
+                    retriedTrackId = null
+                    skipToNextDownloaded(current)
+                }
+            }
+            return
+        }
+        continueAfterFailure(failure, current)
+    }
+
+    private fun continueAfterFailure(failure: PlaybackFailure, current: TrackDetailsDto) {
         if (retriedTrackId != failure.trackId) {
             retriedTrackId = failure.trackId
             Log.w(TAG, "Retrying ${failure.trackId} from ${failure.positionMs} ms after ${failure.reason}")
@@ -698,7 +733,36 @@ class PlaybackController @Inject constructor(
         }
     }
 
-    private fun isOffline(): Boolean = !networkMonitor.isCurrentlyConnected()
+    /**
+     * Set when the network failed although Android reports a connection (Wi-Fi to a phone hotspot that
+     * lost its signal); cleared by a successful [probeInternet]. Android alone would call that "online".
+     */
+    @Volatile private var networkDown = false
+
+    private fun isOffline(): Boolean = networkDown || !networkMonitor.isCurrentlyConnected()
+
+    /** A short request to Yandex: tells "connected" from "online" and updates [networkDown]. */
+    private suspend fun probeInternet(): Boolean {
+        if (!networkMonitor.isCurrentlyConnected()) {
+            networkDown = true
+            return false
+        }
+        val ok = withTimeoutOrNull(PROBE_TIMEOUT_MS) {
+            try {
+                withContext(Dispatchers.IO) { api.getAccountStatus() }
+                true
+            } catch (e: retrofit2.HttpException) {
+                true // the server answered: online
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                false
+            }
+        } == true
+        if (networkDown != !ok) Log.i(TAG, if (ok) "Internet is back" else "Connected but no internet")
+        networkDown = !ok
+        return ok
+    }
 
     /** Downloaded liked tracks plus the offline wave, without repeats. */
     private fun downloadedLibrary(): List<TrackDetailsDto> =
@@ -789,6 +853,7 @@ class PlaybackController @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Error fetching more vibe tracks", e)
+                probeInternet()
             } finally {
                 _isFetchingMoreQueue.value = false
                 val callbacks = pendingFetchCallbacks.toList()
@@ -895,6 +960,9 @@ class PlaybackController @Inject constructor(
         private const val RECENT_LIMIT = 100
         private const val MAX_FAILED_TRACKS = 3
         private const val URL_RETRY_DELAY_MS = 700L
+        // Is Yandex reachable: how long to wait for an answer, how often to ask again while offline
+        private const val PROBE_TIMEOUT_MS = 5_000L
+        private const val PROBE_INTERVAL_MS = 30_000L
         private const val SNAPSHOT_INTERVAL_MS = 15_000L
         private const val RESUMPTION_START_TIMEOUT_MS = 4_000L
         private const val SLEEP_FADE_MS = 8_000L

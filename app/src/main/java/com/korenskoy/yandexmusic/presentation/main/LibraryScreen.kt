@@ -43,6 +43,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -115,6 +116,10 @@ fun LibraryScreen(
     waveCacheLimitMb: Int = 0,
     waveCacheUsedBytes: Long = 0L,
     onWaveCacheLimitChange: (Int) -> Unit = {},
+    /** Open the settings once (the car screen's button), then report it with [onSettingsRequestHandled]. */
+    openSettingsRequest: Boolean = false,
+    onSettingsRequestHandled: () -> Unit = {},
+    onSettingsClosed: () -> Unit = {},
     openCarModeOnStart: Boolean = true,
     onOpenCarModeOnStartChange: (Boolean) -> Unit = {},
     steeringWheelOnLeft: Boolean = true,
@@ -208,7 +213,7 @@ fun LibraryScreen(
                             Spacer(Modifier.width(10.dp))
                         }
                         GlassCircleButton(onClick = { showSettings = true }, contentDescription = stringResource(R.string.library_settings)) {
-                            Icon(Icons.Rounded.Tune, contentDescription = null, tint = Color.White, modifier = Modifier.size(19.dp))
+                            Icon(Icons.Rounded.Tune, contentDescription = null, tint = Color.White, modifier = Modifier.size(26.dp))
                         }
                     }
                 }
@@ -298,9 +303,18 @@ fun LibraryScreen(
         }
     }
 
+    LaunchedEffect(openSettingsRequest) {
+        if (openSettingsRequest) {
+            showSettings = true
+            onSettingsRequestHandled()
+        }
+    }
     if (showSettings) {
         CacheMenuBottomSheet(
-            onDismiss = { showSettings = false },
+            onDismiss = {
+                showSettings = false
+                onSettingsClosed()
+            },
             cacheSizeBytes = cacheSizeBytes,
             autoDownloadEnabled = autoDownloadEnabled,
             onEnableAutoDownload = onEnableAutoDownload,
@@ -396,7 +410,7 @@ private fun SectionRow(icon: ImageVector, title: String, count: Int, onClick: ()
 private fun SectionHeader(title: String, count: Int, onBack: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 16.dp), verticalAlignment = Alignment.CenterVertically) {
         GlassCircleButton(onClick = onBack, contentDescription = stringResource(R.string.cd_nazad)) {
-            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null, tint = Color.White, modifier = Modifier.size(26.dp))
         }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
@@ -484,7 +498,7 @@ private fun PlaylistsPage(
         item(key = "header") {
             Row(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 GlassCircleButton(onClick = onBack, contentDescription = stringResource(R.string.cd_nazad)) {
-                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null, tint = Color.White, modifier = Modifier.size(26.dp))
                 }
                 Spacer(Modifier.width(14.dp))
                 Text(stringResource(R.string.library_playlists_row), style = HiFiType.LargeTitle.copy(fontSize = 28.sp, lineHeight = 34.sp))

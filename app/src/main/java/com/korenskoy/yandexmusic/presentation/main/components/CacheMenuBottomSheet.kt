@@ -420,8 +420,7 @@ private fun ColumnScope.SettingsGroup(title: String, content: @Composable Column
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(Color.White.copy(alpha = 0.05f))
-            .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.03f), Color.Transparent))),
+            .background(HiFi.Surface),
         content = content
     )
 }
@@ -440,12 +439,12 @@ private fun SettingsRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 58.dp)
+            .heightIn(min = 64.dp)
             .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
             .padding(start = 14.dp, end = if (trailing != null) 8.dp else 14.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconPlaque(icon, size = 32.dp, danger = danger)
+        IconPlaque(icon, size = 38.dp, danger = danger)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(title, color = if (danger) HiFi.Danger else Color.White, fontSize = 16.sp, fontWeight = if (danger) FontWeight.SemiBold else FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis)

@@ -39,6 +39,7 @@ import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.RepeatOne
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
@@ -189,7 +190,8 @@ fun CarScreen(
     queue: List<TrackDetailsDto> = emptyList(),
     onQueueTrackClick: (String) -> Unit = {},
     /** Entering the screen with nothing playing; by default starts the wave right away. */
-    onEnter: (() -> Unit)? = null
+    onEnter: (() -> Unit)? = null,
+    onOpenSettings: (() -> Unit)? = null
 ) {
     androidx.activity.compose.BackHandler(onBack = onExit)
     var showPlaylists by remember { mutableStateOf(false) }
@@ -217,14 +219,25 @@ fun CarScreen(
     // The text tab when the track has lyrics and the user keeps it (the remembered choice), else the queue
     val lyricsTab = lyrics != null && showLyrics
     val pickPlaylist: (UserPlaylistDto) -> Unit = { onPlayPlaylist(it); showPlaylists = false }
+    // A source tile closes the playlists picker; the source that already plays is not restarted
+    // (a paused one just continues)
+    val pickSource: (CarSource, () -> Unit) -> () -> Unit = { tile, start ->
+        {
+            showPlaylists = false
+            when {
+                tile != playing -> start()
+                !isPlaying -> onPlayPauseClick()
+            }
+        }
+    }
     val sources = listOf(
-        SourceItem(CarSource.WAVE, Icons.Rounded.Waves, stringResource(R.string.car_source_wave), onPlayMyVibe),
-        SourceItem(CarSource.LIKED, Icons.Rounded.Favorite, stringResource(R.string.car_source_liked), onPlayFavorites),
+        SourceItem(CarSource.WAVE, Icons.Rounded.Waves, stringResource(R.string.car_source_wave), pickSource(CarSource.WAVE, onPlayMyVibe)),
+        SourceItem(CarSource.LIKED, Icons.Rounded.Favorite, stringResource(R.string.car_source_liked), pickSource(CarSource.LIKED, onPlayFavorites)),
         SourceItem(CarSource.PLAYLISTS, Icons.AutoMirrored.Rounded.QueueMusic, stringResource(R.string.car_source_playlists)) {
             showPlaylists = !showPlaylists
             if (showPlaylists) onOpenPlaylists()
         },
-        SourceItem(CarSource.DOWNLOADED, Icons.Rounded.DownloadDone, stringResource(R.string.car_source_downloaded), onPlayDownloaded)
+        SourceItem(CarSource.DOWNLOADED, Icons.Rounded.DownloadDone, stringResource(R.string.car_source_downloaded), pickSource(CarSource.DOWNLOADED, onPlayDownloaded))
     )
 
     BoxWithConstraints(
@@ -274,7 +287,7 @@ fun CarScreen(
             androidx.compose.material3.LocalTextStyle provides androidx.compose.material3.LocalTextStyle.current.copy(lineHeight = TextUnit.Unspecified)
         ) {
             Column(Modifier.fillMaxSize().systemBarsPadding()) {
-                CarHeader(u, sourceLabel, currentTrack, onExit)
+                CarHeader(u, sourceLabel, currentTrack, onExit, onOpenSettings)
                 if (isLandscape) {
                     Row(
                         Modifier.fillMaxSize().padding(start = u(40f), end = u(40f), bottom = u(28f)),
@@ -314,7 +327,7 @@ private data class SourceItem(val source: CarSource, val icon: ImageVector, val 
 
 /** Top line: back, what plays (source · title · artist), the clock. */
 @Composable
-private fun CarHeader(u: Scale, sourceLabel: String, track: TrackDetailsDto?, onExit: () -> Unit) {
+private fun CarHeader(u: Scale, sourceLabel: String, track: TrackDetailsDto?, onExit: () -> Unit, onOpenSettings: (() -> Unit)?) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -353,6 +366,12 @@ private fun CarHeader(u: Scale, sourceLabel: String, track: TrackDetailsDto?, on
         }
         Spacer(Modifier.width(u(20f)))
         CarClock(u)
+        if (onOpenSettings != null) {
+            Spacer(Modifier.width(u(20f)))
+            FlatRound(u(64f), stringResource(R.string.library_settings), onClick = onOpenSettings) {
+                Icon(Icons.Rounded.Settings, contentDescription = null, tint = Color.White, modifier = Modifier.size(u(32f)))
+            }
+        }
     }
 }
 
