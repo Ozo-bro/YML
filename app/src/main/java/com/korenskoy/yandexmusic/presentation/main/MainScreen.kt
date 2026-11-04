@@ -138,6 +138,14 @@ fun MainScreen(
     val currentSource by viewModel.currentSource.collectAsState()
 
     var currentTab by rememberSaveable { mutableStateOf(MainTab.HOME) }
+    val openCarModeOnStart by viewModel.openCarModeOnStart.collectAsState()
+    // App start: straight into the car screen with the music on (a setting, on by default)
+    LaunchedEffect(Unit) {
+        if (viewModel.takeCarLaunch()) {
+            currentTab = MainTab.CAR
+            viewModel.startIfIdle(resumeRestored = true)
+        }
+    }
     var isPlayerExpanded by remember { mutableStateOf(false) }
     LaunchedEffect(openPlayerSignal) {
         if (openPlayerSignal > 0 && viewModel.currentTrack.value != null) isPlayerExpanded = true
@@ -318,6 +326,8 @@ fun MainScreen(
                         waveCacheLimitMb = waveCacheLimitMb,
                         waveCacheUsedBytes = waveCacheUsedBytes,
                         onWaveCacheLimitChange = { viewModel.setWaveCacheLimitMb(it) },
+                        openCarModeOnStart = openCarModeOnStart,
+                        onOpenCarModeOnStartChange = { viewModel.setOpenCarModeOnStart(it) },
                         steeringWheelOnLeft = steeringWheelOnLeft,
                         onSteeringWheelChange = { viewModel.setSteeringWheelOnLeft(it) },
                         uiScaleAuto = uiScaleAuto,
@@ -394,7 +404,8 @@ fun MainScreen(
                                 val index = currentPlaylist.indexOfFirst { it.idString == currentTrackId }
                                 if (index < 0) emptyList() else currentPlaylist.drop(index + 1).take(50)
                             },
-                            onQueueTrackClick = { viewModel.playTrack(it, currentPlaylist) }
+                            onQueueTrackClick = { viewModel.playTrack(it, currentPlaylist) },
+                            onEnter = { viewModel.startIfIdle(resumeRestored = false) }
                         )
                     }
                 }

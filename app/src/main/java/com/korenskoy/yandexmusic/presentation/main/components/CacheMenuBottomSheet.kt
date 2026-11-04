@@ -127,6 +127,8 @@ fun CacheMenuBottomSheet(
     waveCacheLimitMb: Int = 0,
     waveCacheUsedBytes: Long = 0L,
     onWaveCacheLimitChange: (Int) -> Unit = {},
+    openCarModeOnStart: Boolean = true,
+    onOpenCarModeOnStartChange: (Boolean) -> Unit = {},
     steeringWheelOnLeft: Boolean = true,
     onSteeringWheelChange: (Boolean) -> Unit = {},
     uiScaleAuto: Boolean = true,
@@ -297,6 +299,14 @@ fun CacheMenuBottomSheet(
                     }
                     val car: @Composable ColumnScope.() -> Unit = {
                         SettingsGroup(stringResource(R.string.settings_group_car)) {
+                            SettingsRow(
+                                icon = Icons.Rounded.DirectionsCar,
+                                title = stringResource(R.string.settings_open_car_on_start),
+                                subtitle = stringResource(R.string.settings_open_car_on_start_hint),
+                                chevron = false,
+                                onClick = { onOpenCarModeOnStartChange(!openCarModeOnStart) },
+                                trailing = { HiFiSwitch(checked = openCarModeOnStart, onCheckedChange = onOpenCarModeOnStartChange) }
+                            )
                             SegmentedRow(Icons.Rounded.DirectionsCar, stringResource(R.string.settings_steering)) {
                                 HiFiSegmented(
                                     options = listOf(stringResource(R.string.settings_steering_left_short), stringResource(R.string.settings_steering_right_short)),
@@ -468,7 +478,7 @@ private fun AccountCard(name: String, avatarUrl: String?, hasPlus: Boolean, onSw
                 .background(Brush.verticalGradient(HiFi.MetalEdge))
                 .padding(2.dp)
                 .clip(CircleShape)
-                .background(Brush.linearGradient(listOf(Color(0xFF3A4A6B), Color(0xFF1C2232)))),
+                .background(androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Surface)),
             contentAlignment = Alignment.Center
         ) {
             Text((name.firstOrNull() ?: 'Я').uppercaseChar().toString(), color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)

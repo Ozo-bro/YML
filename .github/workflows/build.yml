@@ -90,14 +90,17 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew testDebugUnitTest --no-daemon -Proborazzi.test.record=true \
-            --tests "*PlaybackQueueTest" --tests "*HiFiLogicTest" --tests "*LyricsTest" --tests "*CarSplitScreenshotTest"
+            --tests "*PlaybackQueueTest" --tests "*HiFiLogicTest" --tests "*LyricsTest" --tests "*CarSplitScreenshotTest" --tests "*.ScreenshotTest"
       - name: Publish car screens to the ci-screens branch (for review)
         if: always()
         env:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          [ -d app/build/outputs/split-screens ] || exit 0
-          mkdir -p /tmp/screens && cp app/build/outputs/split-screens/*.png /tmp/screens/
+          mkdir -p /tmp/screens
+          cp app/build/outputs/split-screens/*.png /tmp/screens/ 2>/dev/null || true
+          # The rest of the app (ScreenshotTest renders into the reference folder)
+          for f in app/src/test/screenshots/*.png; do [ -f "$f" ] && cp "$f" "/tmp/screens/app_$(basename "$f")"; done
+          ls /tmp/screens/*.png >/dev/null 2>&1 || exit 0
           cd /tmp/screens
           git init -q -b ci-screens
           git config user.name "github-actions"

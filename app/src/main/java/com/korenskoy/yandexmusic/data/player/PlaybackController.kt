@@ -315,6 +315,22 @@ class PlaybackController @Inject constructor(
         playTrack(radioTrack.idString, listOf(radioTrack), PlaylistSource.RADIO)
     }
 
+    /**
+     * Starts music unless something already plays, once the saved session is restored (so a restored
+     * track is not overridden). [resumeRestored]: continue the restored track (app launch) instead of
+     * only starting the wave when nothing is there (entering the car screen).
+     */
+    fun startIfIdle(resumeRestored: Boolean) {
+        scope.launch {
+            sessionRestored.await()
+            if (isPlaying.value || _isStarting.value) return@launch
+            when {
+                _currentTrack.value == null -> playMyVibe()
+                resumeRestored -> play()
+            }
+        }
+    }
+
     fun toggleRepeatOne() {
         _repeatOne.value = !_repeatOne.value
         // The standby player must hold the right "next": this track again, or the queue's next

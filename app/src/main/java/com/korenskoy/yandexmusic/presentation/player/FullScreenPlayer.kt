@@ -247,19 +247,15 @@ fun FullScreenPlayer(
                     Box(
                         modifier = Modifier
                             .size(40.dp)
-                            .shadow(6.dp, CircleShape, spotColor = Color.Black.copy(alpha = 0.4f))
+                            
                             .clip(CircleShape)
                             .background(
-                                Brush.verticalGradient(
-                                    listOf(Color(0x352A2A38), Color(0x201E1E28))
-                                )
+                                androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Surface)
                             )
                             .border(
                                 BorderStroke(
                                     1.dp,
-                                    Brush.verticalGradient(
-                                        listOf(Color(0x40FFFFFF), Color(0x10FFFFFF))
-                                    )
+                                    androidx.compose.ui.graphics.SolidColor(Color.Transparent)
                                 ),
                                 CircleShape
                             )
@@ -318,19 +314,15 @@ fun FullScreenPlayer(
                         Box(
                             modifier = Modifier
                                 .size(40.dp)
-                                .shadow(6.dp, CircleShape, spotColor = Color.Black.copy(alpha = 0.4f))
+                                
                                 .clip(CircleShape)
                                 .background(
-                                    Brush.verticalGradient(
-                                        listOf(Color(0x352A2A38), Color(0x201E1E28))
-                                    )
+                                    androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Surface)
                                 )
                                 .border(
                                     BorderStroke(
                                         1.dp,
-                                        Brush.verticalGradient(
-                                            listOf(Color(0x40FFFFFF), Color(0x10FFFFFF))
-                                        )
+                                        androidx.compose.ui.graphics.SolidColor(Color.Transparent)
                                     ),
                                     CircleShape
                                 )
@@ -405,12 +397,7 @@ fun FullScreenPlayer(
                             .wrapContentSize(Alignment.Center)
                             .aspectRatio(1f)
                             .then(coverModifier)
-                            .shadow(
-                                elevation = 16.dp,
-                                shape = RoundedCornerShape(20.dp),
-                                spotColor = Color.Black.copy(alpha = 0.6f),
-                                ambientColor = Color.Black.copy(alpha = 0.4f)
-                            )
+                            
                             .clip(RoundedCornerShape(20.dp))
                     ) {
                         SubcomposeAsyncImage(
@@ -514,7 +501,7 @@ fun FullScreenPlayer(
                                     .size(if (isDraggingSlider) 16.dp else 12.dp)
                                     .clip(CircleShape)
                                     .background(Color.White)
-                                    .shadow(4.dp, CircleShape)
+                                    
                             )
                         },
                         track = { sliderState ->
@@ -573,19 +560,15 @@ fun FullScreenPlayer(
                     onClick = onPrevClick,
                     modifier = Modifier
                         .size(56.dp)
-                        .shadow(10.dp, CircleShape, spotColor = Color.Black.copy(alpha = 0.5f))
+                        
                         .clip(CircleShape)
                         .background(
-                            Brush.verticalGradient(
-                                listOf(Color(0x40323242), Color(0x2520202C))
-                            )
+                            androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Surface)
                         )
                         .border(
                             BorderStroke(
                                 1.2.dp,
-                                Brush.verticalGradient(
-                                    listOf(Color(0x55FFFFFF), Color(0x18FFFFFF))
-                                )
+                                androidx.compose.ui.graphics.SolidColor(Color.Transparent)
                             ),
                             CircleShape
                         )
@@ -612,19 +595,15 @@ fun FullScreenPlayer(
                     onClick = onNextClick,
                     modifier = Modifier
                         .size(56.dp)
-                        .shadow(10.dp, CircleShape, spotColor = Color.Black.copy(alpha = 0.5f))
+                        
                         .clip(CircleShape)
                         .background(
-                            Brush.verticalGradient(
-                                listOf(Color(0x40323242), Color(0x2520202C))
-                            )
+                            androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Surface)
                         )
                         .border(
                             BorderStroke(
                                 1.2.dp,
-                                Brush.verticalGradient(
-                                    listOf(Color(0x55FFFFFF), Color(0x18FFFFFF))
-                                )
+                                androidx.compose.ui.graphics.SolidColor(Color.Transparent)
                             ),
                             CircleShape
                         )
@@ -743,15 +722,10 @@ fun QueueDialogCard(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .shadow(32.dp, RoundedCornerShape(24.dp), spotColor = Color.Black.copy(alpha = 0.8f))
+            
             .clip(RoundedCornerShape(24.dp))
             .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF22222A),
-                        Color(0xFF14141A)
-                    )
-                )
+                androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Surface)
             )
             .border(
                 BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
@@ -963,10 +937,10 @@ fun LikeHeartButton(
         modifier = Modifier
             .size(48.dp)
             // Hi-Fi glass, the same as on "Моя волна": the heart alone carries the accent, no glow
-            .shadow(8.dp, CircleShape, spotColor = Color.Black.copy(alpha = 0.4f))
+            
             .clip(CircleShape)
-            .background(Brush.verticalGradient(listOf(Color(0x352A2A38), Color(0x201E1E28))))
-            .border(BorderStroke(1.dp, Brush.verticalGradient(listOf(Color(0x40FFFFFF), Color(0x10FFFFFF)))), CircleShape)
+            .background(androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Surface))
+            .border(BorderStroke(1.dp, androidx.compose.ui.graphics.SolidColor(Color.Transparent)), CircleShape)
     ) {
         Icon(
             imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
@@ -1065,9 +1039,7 @@ fun PlayerMetadataAndUpNext(track: TrackDetailsDto, nextTrack: TrackDetailsDto?,
                             .size(36.dp)
                             .clip(RoundedCornerShape(8.dp))
                             .background(
-                                Brush.linearGradient(
-                                    colors = listOf(Color(0xFF33333C), Color(0xFF1E1E24))
-                                )
+                                androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Surface)
                             ),
                         contentAlignment = Alignment.Center
                     ) {
@@ -1151,19 +1123,15 @@ fun DislikeButton(
         },
         modifier = Modifier
             .size(48.dp)
-            .shadow(8.dp, CircleShape, spotColor = Color.Black.copy(alpha = 0.4f))
+            
             .clip(CircleShape)
             .background(
-                Brush.verticalGradient(
-                    listOf(Color(0x352A2A38), Color(0x201E1E28))
-                )
+                androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Surface)
             )
             .border(
                 BorderStroke(
                     1.2.dp,
-                    Brush.verticalGradient(
-                        listOf(Color(0x40FFFFFF), Color(0x10FFFFFF))
-                    )
+                    androidx.compose.ui.graphics.SolidColor(Color.Transparent)
                 ),
                 CircleShape
             )

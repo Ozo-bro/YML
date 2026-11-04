@@ -69,12 +69,20 @@ object HiFiType {
     val Caption = TextStyle(fontSize = 13.sp, lineHeight = 17.sp, color = HiFi.TextSecondary)
 }
 
-/** Frosted glass surface (fill + hairline border). */
+/**
+ * A flat surface. Kept under its old name: a translucent "glass" fill becomes the solid surface, a
+ * dark or coloured fill is kept, and there is no border.
+ */
+@Suppress("UNUSED_PARAMETER")
 fun Modifier.hifiGlass(shape: Shape, fill: Color = HiFi.GlassFill, border: Color = HiFi.GlassBorder): Modifier =
-    this.clip(shape).background(fill).border(1.dp, border, shape)
+    this.clip(shape).background(if (fill.alpha < 0.5f) HiFi.Surface else fill)
 
-/** A "recessed" window: dark, with an inner shadow at the top and a light lip at the bottom. */
-fun Modifier.hifiRecessed(cornerRadius: Dp): Modifier = this.drawWithCache {
+/** A flat inset (time readouts, slider tracks): the raised surface colour, no shading. */
+fun Modifier.hifiRecessed(cornerRadius: Dp): Modifier = this.clip(RoundedCornerShape(cornerRadius)).background(HiFi.SurfaceHigh)
+
+/** The old shaded inset; unused since the flat redesign. */
+@Suppress("unused")
+private fun Modifier.hifiRecessedShaded(cornerRadius: Dp): Modifier = this.drawWithCache {
     val r = CornerRadius(cornerRadius.toPx())
     val fill = Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.58f), Color.Black.copy(alpha = 0.36f)))
     val innerShadow = Brush.verticalGradient(0f to Color.Black.copy(alpha = 0.55f), 0.18f to Color.Transparent)
@@ -91,12 +99,8 @@ fun Modifier.hifiRecessed(cornerRadius: Dp): Modifier = this.drawWithCache {
     }
 }
 
-/** Dark anodized metal with a thin steel edge — the "selected" material (no glowing dots). */
-fun Modifier.hifiAnodized(shape: Shape): Modifier = this
-    .clip(shape)
-    .background(Brush.radialGradient(listOf(Color(0xFF2F333E), Color(0xFF16181E)), radius = 600f, center = Offset(0f, 0f)))
-    .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.06f), Color.Transparent)))
-    .border(BorderStroke(1.dp, Brush.verticalGradient(HiFi.MetalEdge.map { it.copy(alpha = 0.65f) })), shape)
+/** The "selected" material: a flat soft-blue fill. */
+fun Modifier.hifiAnodized(shape: Shape): Modifier = this.clip(shape).background(HiFi.SelectedFill)
 
 /** Page title, 34/800. */
 @Composable
@@ -148,7 +152,7 @@ fun GlassCircleButton(
     )
 }
 
-/** Primary action: an anodized metal capsule with a steel rim. */
+/** Primary action: a flat white capsule with dark text. */
 @Composable
 fun MetalPillButton(
     text: String,
@@ -161,24 +165,19 @@ fun MetalPillButton(
     Box(
         modifier = modifier
             .height(height)
-            .shadow(14.dp, CircleShape, ambientColor = Color.Black, spotColor = Color.Black)
             .clip(CircleShape)
-            .background(Brush.verticalGradient(HiFi.MetalEdge))
-            .padding(1.5.dp)
-            .clip(CircleShape)
-            .background(Brush.radialGradient(HiFi.KnobFace, center = Offset(0f, 0f), radius = 900f))
-            .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.10f), Color.Transparent)))
+            .background(Color.White)
             .clickable(role = Role.Button) {
                 view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
                 onClick()
             },
         contentAlignment = Alignment.Center
     ) {
-        PillLabel(text, icon)
+        PillLabel(text, icon, HiFi.Ground)
     }
 }
 
-/** Secondary action: a frosted glass capsule. */
+/** Secondary action: a flat surface capsule. */
 @Composable
 fun GlassPillButton(
     text: String,
@@ -199,13 +198,13 @@ fun GlassPillButton(
 }
 
 @Composable
-private fun PillLabel(text: String, icon: ImageVector?) {
+private fun PillLabel(text: String, icon: ImageVector?, color: Color = Color.White) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
         if (icon != null) {
-            Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(19.dp))
+            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(19.dp))
             Spacer(Modifier.width(8.dp))
         }
-        Text(text, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        Text(text, color = color, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1)
     }
 }
 
@@ -303,7 +302,7 @@ fun HiFiSegmented(options: List<String>, selectedIndex: Int, onSelect: (Int) -> 
 /** A hardware-like toggle: blue track when on, a bright metal thumb. */
 @Composable
 fun HiFiSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
-    val track by animateColorAsState(if (checked) HiFi.Accent else Color.Black.copy(alpha = 0.5f), HiFiMotion.quick(), label = "switch_track")
+    val track by animateColorAsState(if (checked) HiFi.Accent else HiFi.SurfaceHigh, HiFiMotion.quick(), label = "switch_track")
     val thumbX by animateDpAsState(if (checked) 24.dp else 2.dp, HiFiMotion.spring(), label = "switch_thumb")
     val view = LocalView.current
     Box(
@@ -311,7 +310,6 @@ fun HiFiSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: M
             .size(width = 54.dp, height = 32.dp)
             .clip(CircleShape)
             .background(track)
-            .border(1.dp, Color.White.copy(alpha = if (checked) 0.0f else 0.10f), CircleShape)
             .toggleable(value = checked, role = Role.Switch, interactionSource = remember { MutableInteractionSource() }, indication = null) {
                 view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
                 onCheckedChange(it)
@@ -321,9 +319,8 @@ fun HiFiSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: M
             modifier = Modifier
                 .offset { IntOffset(thumbX.roundToPx(), 2.dp.roundToPx()) }
                 .size(28.dp)
-                .shadow(4.dp, CircleShape)
                 .clip(CircleShape)
-                .background(Brush.sweepGradient(HiFi.BrightMetalSweep))
+                .background(Color.White)
         )
     }
 }
@@ -351,13 +348,9 @@ fun HiFiSlider(
         thumb = {
             Box(
                 modifier = Modifier
-                    .size(26.dp)
-                    .shadow(5.dp, CircleShape)
+                    .size(24.dp)
                     .clip(CircleShape)
-                    .background(Brush.sweepGradient(HiFi.MetalSweep))
-                    .padding(1.5.dp)
-                    .clip(CircleShape)
-                    .background(Brush.radialGradient(HiFi.KnobFace))
+                    .background(Color.White)
             )
         },
         track = { state ->

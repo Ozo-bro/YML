@@ -188,7 +188,9 @@ fun CarScreen(
     repeatOne: Boolean = false,
     onToggleRepeat: () -> Unit = {},
     queue: List<TrackDetailsDto> = emptyList(),
-    onQueueTrackClick: (String) -> Unit = {}
+    onQueueTrackClick: (String) -> Unit = {},
+    /** Entering the screen with nothing playing; by default starts the wave right away. */
+    onEnter: (() -> Unit)? = null
 ) {
     androidx.activity.compose.BackHandler(onBack = onExit)
     var showPlaylists by remember { mutableStateOf(false) }
@@ -199,7 +201,7 @@ fun CarScreen(
         onDispose { view.keepScreenOn = false }
     }
     LaunchedEffect(Unit) {
-        if (!isPlaying && currentTrack == null) onPlayMyVibe()
+        if (onEnter != null) onEnter() else if (!isPlaying && currentTrack == null) onPlayMyVibe()
     }
 
     val playPause = { if (!isPlaying && currentTrack == null) onPlayMyVibe() else onPlayPauseClick() }
@@ -238,9 +240,9 @@ fun CarScreen(
             }
             .pointerInput(Unit) { detectTapGestures(onDoubleTap = { playPause() }) }
     ) {
-        // Landscape needs 1060 units across (driver side + a 380 side panel) and 720 down: a narrower
+        // Landscape needs 1000 units across (driver side + a 400 side panel) and 720 down: a narrower
         // split window keeps the height and the side panel gives up width
-        val s = if (isLandscape) minOf(maxWidth / 1060.dp, maxHeight / 720.dp) else minOf(maxWidth / 600.dp, maxHeight / 1060.dp)
+        val s = if (isLandscape) minOf(maxWidth / 1000.dp, maxHeight / 720.dp) else minOf(maxWidth / 600.dp, maxHeight / 1060.dp)
         val u = Scale(s.coerceIn(0.5f, 2f))
 
         val side: @Composable (Modifier) -> Unit = { modifier ->
@@ -280,7 +282,7 @@ fun CarScreen(
                         Modifier.fillMaxSize().padding(start = u(40f), end = u(40f), bottom = u(28f)),
                         horizontalArrangement = Arrangement.spacedBy(u(36f))
                     ) {
-                        val driverSide: @Composable () -> Unit = { driver(Modifier.width(u(580f)).fillMaxHeight()) }
+                        val driverSide: @Composable () -> Unit = { driver(Modifier.width(u(500f)).fillMaxHeight()) }
                         val farSide: @Composable () -> Unit = {
                             Column(Modifier.weight(1f).fillMaxHeight()) {
                                 side(Modifier.weight(1f).fillMaxWidth())
@@ -407,24 +409,22 @@ private fun DriverPanel(
 ) {
     val context = LocalContext.current
     Column(modifier) {
-        // The cover in the middle, flanked by the rating pair: dislike on the left, like on the right
-        Row(
-            Modifier.fillMaxWidth().weight(1f),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            FlatRound(u(92f), stringResource(R.string.cd_ne_nravitsya), onClick = onDislike) {
-                Icon(Icons.Rounded.HeartBroken, contentDescription = null, tint = Color.White, modifier = Modifier.size(u(40f)))
+        // The cover; a tap dims it and shows the rating pair (dislike · like), which hides again by itself
+        var showRating by remember(track?.idString) { mutableStateOf(false) }
+        LaunchedEffect(showRating) {
+            if (showRating) {
+                delay(4_000)
+                showRating = false
             }
-            // Weighted, so the buttons are measured first and keep their full round size
+        }
+        Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
             Box(
                 Modifier
-                    .weight(1f, fill = false)
-                    .padding(horizontal = u(20f))
                     .fillMaxHeight()
                     .aspectRatio(1f, matchHeightConstraintsFirst = true)
                     .clip(RoundedCornerShape(u(24f)))
                     .background(Flat.Surface)
+                    .clickable(role = Role.Button, onClickLabel = stringResource(R.string.car_rate_track)) { showRating = !showRating }
             ) {
                 AsyncImage(
                     model = ImageRequest.Builder(context).data(track?.coverUri.toCoverUrl("600x600")).size(600).build(),
@@ -432,14 +432,39 @@ private fun DriverPanel(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                 )
-            }
-            FlatRound(u(92f), stringResource(R.string.cd_nravitsya), onClick = onLike) {
-                Icon(
-                    if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                    contentDescription = null,
-                    tint = if (isLiked) Color(0xFFFF4D6D) else Color.White,
-                    modifier = Modifier.size(u(42f))
-                )
+                if (isLiked && !showRating) {
+                    // Liked: a small heart in the corner
+                    Box(
+                        Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(u(12f))
+                            .size(u(44f))
+                            .clip(CircleShape)
+                            .background(Color(0xCC0E1013)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Rounded.Favorite, contentDescription = null, tint = Color(0xFFFF4D6D), modifier = Modifier.size(u(24f)))
+                    }
+                }
+                if (showRating) {
+                    Row(
+                        Modifier.fillMaxSize().background(Color(0x990E1013)),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        FlatRound(u(96f), stringResource(R.string.cd_ne_nravitsya), onClick = { showRating = false; onDislike() }) {
+                            Icon(Icons.Rounded.HeartBroken, contentDescription = null, tint = Color.White, modifier = Modifier.size(u(42f)))
+                        }
+                        FlatRound(u(96f), stringResource(R.string.cd_nravitsya), onClick = { showRating = false; onLike() }) {
+                            Icon(
+                                if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                                contentDescription = null,
+                                tint = if (isLiked) Color(0xFFFF4D6D) else Color.White,
+                                modifier = Modifier.size(u(44f))
+                            )
+                        }
+                    }
+                }
             }
         }
 
@@ -574,7 +599,7 @@ private fun FlatRound(size: Dp, description: String, onClick: () -> Unit, conten
 private fun ModeButton(u: Scale, icon: ImageVector, active: Boolean, enabled: Boolean, description: String, onClick: () -> Unit) {
     Box(
         Modifier
-            .size(u(84f))
+            .size(u(78f))
             .clip(CircleShape)
             .background(if (active && enabled) Flat.AccentSoft else Flat.Surface)
             .clickable(enabled = enabled, role = Role.Button, onClickLabel = description, onClick = onClick)
@@ -724,7 +749,10 @@ private fun QueueList(u: Scale, queue: List<TrackDetailsDto>, onPick: (String) -
         Text(stringResource(R.string.car_queue_empty), color = Flat.TextDim, fontSize = u.sp(18f), modifier = Modifier.padding(u(14f)))
         return
     }
-    LazyColumn(Modifier.fillMaxSize()) {
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    // Picking a track (or the next one starting) shifts the list: show it from the top again
+    LaunchedEffect(queue.firstOrNull()?.idString) { listState.scrollToItem(0) }
+    LazyColumn(Modifier.fillMaxSize(), state = listState) {
         // No keys: a queue may hold the same track twice
         items(queue) { track ->
             Row(

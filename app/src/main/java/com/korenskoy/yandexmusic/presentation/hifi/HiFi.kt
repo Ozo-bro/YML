@@ -18,20 +18,26 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
 /**
- * The "Hi-Fi" design language of redesign 2.0: a dark ground, metal controls, one blue accent and a
- * single tint taken from the cover of what is playing. Every screen takes its colors from here.
+ * The app's design language, flat dark (the same as the car screen): a solid ground, solid surfaces
+ * without glass, metal, gradients or shadows, one blue accent. Every screen takes its colors from here.
  */
 object HiFi {
-    val Ground = Color(0xFF05060A)
-    val Accent = Color(0xFF0A6CFF)
+    val Ground = Color(0xFF0E1013)
+    /** Cards, buttons, bars. */
+    val Surface = Color(0xFF1A1D22)
+    /** Something on a surface (a track of a slider, a selected tab). */
+    val SurfaceHigh = Color(0xFF262A31)
+    /** The selected/"on" fill of a control. */
+    val SelectedFill = Color(0x383D8BFF)
+    val Accent = Color(0xFF3D8BFF)
     val TextPrimary = Color.White
     val TextSecondary = Color.White.copy(alpha = 0.66f)
     val TextTertiary = Color.White.copy(alpha = 0.55f)
     val Hairline = Color.White.copy(alpha = 0.10f)
-    val GlassFill = Color.White.copy(alpha = 0.08f)
-    val GlassBorder = Color.White.copy(alpha = 0.16f)
-    val BarFill = Color(0xB81C1E26)
-    val SheetFill = Color(0xF010121A)
+    val GlassFill = Surface
+    val GlassBorder = Color.Transparent
+    val BarFill = Surface
+    val SheetFill = Color(0xFF15171B)
     val Danger = Color(0xFFFF6B6B)
     val Live = Color(0xFFFF4D4D)
 

@@ -160,34 +160,22 @@ fun TrackItem(
         Box(
             modifier = Modifier
                 .size(34.dp)
-                .shadow(
-                    elevation = if (isLiked) 6.dp else 2.dp,
-                    shape = CircleShape,
-                    spotColor = if (isLiked) Color(0xFF0A6CFF).copy(alpha = 0.6f) else Color.Black.copy(alpha = 0.3f)
-                )
+                
                 .clip(CircleShape)
                 .background(
                     if (isLiked) {
-                        Brush.verticalGradient(
-                            listOf(Color(0x440A6CFF), Color(0x220A55D6))
-                        )
+                        androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Accent)
                     } else {
-                        Brush.verticalGradient(
-                            listOf(Color(0x252A2A38), Color(0x151E1E28))
-                        )
+                        androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Surface)
                     }
                 )
                 .border(
                     BorderStroke(
                         1.dp,
                         if (isLiked) {
-                            Brush.verticalGradient(
-                                listOf(Color(0xFF0A6CFF), Color(0x660A6CFF))
-                            )
+                            androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Accent)
                         } else {
-                            Brush.verticalGradient(
-                                listOf(Color(0x35FFFFFF), Color(0x10FFFFFF))
-                            )
+                            androidx.compose.ui.graphics.SolidColor(Color.Transparent)
                         }
                     ),
                     CircleShape

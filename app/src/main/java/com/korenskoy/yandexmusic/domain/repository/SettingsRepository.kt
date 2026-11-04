@@ -24,6 +24,8 @@ interface SettingsRepository {
     val showLyrics: Flow<Boolean>
     /** Offline wave: size limit of the auto-saved My Wave tracks in MB; 0 turns it off. */
     val waveCacheLimitMb: Flow<Int>
+    /** Open the car screen when the app starts, and start the music. */
+    val openCarModeOnStart: Flow<Boolean>
 
     suspend fun setDarkTheme(enabled: Boolean)
     suspend fun setAutoDownloadLikedTracks(enabled: Boolean)
@@ -36,6 +38,7 @@ interface SettingsRepository {
     suspend fun setShuffleEnabled(enabled: Boolean)
     suspend fun setShowLyrics(enabled: Boolean)
     suspend fun setWaveCacheLimitMb(limitMb: Int)
+    suspend fun setOpenCarModeOnStart(enabled: Boolean)
 
     companion object {
         const val DEFAULT_CROSSFADE_SECONDS = 3

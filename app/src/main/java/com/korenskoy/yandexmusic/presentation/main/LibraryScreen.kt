@@ -115,6 +115,8 @@ fun LibraryScreen(
     waveCacheLimitMb: Int = 0,
     waveCacheUsedBytes: Long = 0L,
     onWaveCacheLimitChange: (Int) -> Unit = {},
+    openCarModeOnStart: Boolean = true,
+    onOpenCarModeOnStartChange: (Boolean) -> Unit = {},
     steeringWheelOnLeft: Boolean = true,
     onSteeringWheelChange: (Boolean) -> Unit = {},
     uiScaleAuto: Boolean = true,
@@ -307,6 +309,8 @@ fun LibraryScreen(
             waveCacheLimitMb = waveCacheLimitMb,
             waveCacheUsedBytes = waveCacheUsedBytes,
             onWaveCacheLimitChange = onWaveCacheLimitChange,
+            openCarModeOnStart = openCarModeOnStart,
+            onOpenCarModeOnStartChange = onOpenCarModeOnStartChange,
             steeringWheelOnLeft = steeringWheelOnLeft,
             onSteeringWheelChange = onSteeringWheelChange,
             uiScaleAuto = uiScaleAuto,
@@ -431,7 +435,7 @@ internal fun CoverCard(track: TrackDetailsDto, modifier: Modifier = Modifier, on
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
-                .shadow(14.dp, RoundedCornerShape(16.dp))
+                
                 .clip(RoundedCornerShape(16.dp))
                 .background(Color(0xFF1C1F28))
                 .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(16.dp))
@@ -510,7 +514,7 @@ private fun PlaylistsPage(
                             Spacer(Modifier.height(9.dp))
                             Text(stringResource(R.string.playlist_new), style = HiFiType.CardTitle, maxLines = 1)
                         } else {
-                            PlaylistCover(playlist, Modifier.fillMaxWidth().aspectRatio(1f).shadow(14.dp, RoundedCornerShape(16.dp)).clip(RoundedCornerShape(16.dp)))
+                            PlaylistCover(playlist, Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(16.dp)))
                             Spacer(Modifier.height(9.dp))
                             Text(playlist.title ?: "", style = HiFiType.CardTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Text(

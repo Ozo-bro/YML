@@ -89,7 +89,7 @@ internal fun PlaylistCover(playlist: UserPlaylistDto, modifier: Modifier) {
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
-            .background(Brush.linearGradient(listOf(Color(0xFF3A2A4A), Color(0xFF22222C)))),
+            .background(androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Surface)),
         contentAlignment = Alignment.Center
     ) {
         Icon(
@@ -292,7 +292,7 @@ fun PlaylistScreen(
                 modifier = Modifier
                     .size(42.dp)
                     .clip(CircleShape)
-                    .background(Brush.verticalGradient(listOf(Color(0x352A2A38), Color(0x201E1E28))))
+                    .background(androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Surface))
                     .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)), CircleShape)
                     .clickable(enabled = enabled && !allSaved, onClickLabel = downloadLabel, onClick = onDownload),
                 contentAlignment = Alignment.Center
@@ -468,8 +468,8 @@ private fun PlaylistAction(
             .height(42.dp)
             .clip(CircleShape)
             .background(
-                if (primary) Brush.linearGradient(listOf(Color(0xFF3D8BFF), Color(0xFF0A6CFF), Color(0xFF0A55D6)))
-                else Brush.verticalGradient(listOf(Color(0x352A2A38), Color(0x201E1E28)))
+                if (primary) androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Accent)
+                else androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Surface)
             )
             .border(BorderStroke(1.dp, Color.White.copy(alpha = if (primary) 0.6f else 0.25f)), CircleShape)
             .clickable(enabled = enabled, onClick = onClick),

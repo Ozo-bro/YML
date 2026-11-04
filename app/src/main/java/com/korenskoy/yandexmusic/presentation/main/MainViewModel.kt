@@ -73,6 +73,22 @@ class MainViewModel @Inject constructor(
     val waveCacheLimitMb: StateFlow<Int> = settingsRepository.waveCacheLimitMb
         .stateIn(viewModelScope, SharingStarted.Eagerly, SettingsRepository.DEFAULT_WAVE_CACHE_LIMIT_MB)
     val waveCacheUsedBytes: StateFlow<Long> = waveCache.usedBytes
+    val openCarModeOnStart: StateFlow<Boolean> = settingsRepository.openCarModeOnStart
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
+    /** Once per screen session: true when the app should open in the car screen and start playing. */
+    private var launchHandled = false
+    suspend fun takeCarLaunch(): Boolean {
+        if (launchHandled) return false
+        launchHandled = true
+        return settingsRepository.openCarModeOnStart.first()
+    }
+
+    fun setOpenCarModeOnStart(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setOpenCarModeOnStart(enabled) }
+    }
+
+    fun startIfIdle(resumeRestored: Boolean) = playbackController.startIfIdle(resumeRestored)
 
     // endregion
 

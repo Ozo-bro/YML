@@ -315,7 +315,7 @@ private fun RecentPanel(history: List<String>, onPick: (String) -> Unit, onRemov
         Modifier
             .widthIn(max = 560.dp)
             .fillMaxWidth()
-            .shadow(30.dp, RoundedCornerShape(24.dp))
+            
             .hifiGlass(RoundedCornerShape(24.dp), fill = Color(0xFF171922), border = Color.White.copy(alpha = 0.12f))
             .padding(top = 6.dp, bottom = 8.dp)
     ) {
@@ -486,7 +486,7 @@ private fun ResultsList(
                             Modifier.width(96.dp).clip(RoundedCornerShape(12.dp)).clickable(role = Role.Button) { onArtistClick(artist) },
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Box(Modifier.shadow(10.dp, CircleShape)) { Cover(artist.coverUri, Icons.Rounded.Person, CircleShape, 88.dp) }
+                            Box(Modifier) { Cover(artist.coverUri, Icons.Rounded.Person, CircleShape, 88.dp) }
                             Spacer(Modifier.height(8.dp))
                             Text(artist.name.orEmpty(), style = HiFiType.CardTitle.copy(fontSize = 13.sp), maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
@@ -526,7 +526,7 @@ private fun ResultsList(
                 LazyRow(contentPadding = PaddingValues(start = contentStart, end = 20.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     items(albums, key = { it.idString ?: it.title.orEmpty() }) { album ->
                         Column(Modifier.width(150.dp).clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 6.dp, bottomEnd = 6.dp)).clickable(role = Role.Button) { onAlbumClick(album) }) {
-                            Box(Modifier.shadow(14.dp, RoundedCornerShape(16.dp))) { Cover(album.coverUri, Icons.Rounded.Album, RoundedCornerShape(16.dp), 150.dp) }
+                            Box(Modifier) { Cover(album.coverUri, Icons.Rounded.Album, RoundedCornerShape(16.dp), 150.dp) }
                             Spacer(Modifier.height(9.dp))
                             Text(album.title.orEmpty(), style = HiFiType.CardTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Text(listOfNotNull(album.year?.toString(), album.artists.firstOrNull()?.name).joinToString(" · "), style = HiFiType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -547,7 +547,7 @@ private fun BestResultCard(title: String, subtitle: String, coverUri: String?, r
         Modifier
             .fillMaxWidth()
             .height(104.dp)
-            .shadow(16.dp, shape)
+            
             .clip(shape)
             .background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(tint.primary.copy(alpha = 0.55f), tint.secondary.copy(alpha = 0.55f), Color(0xFF12141C))))
             .hifiGlass(shape, fill = Color.Black.copy(alpha = 0.18f), border = Color.White.copy(alpha = 0.12f))
@@ -555,7 +555,7 @@ private fun BestResultCard(title: String, subtitle: String, coverUri: String?, r
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(Modifier.shadow(10.dp, if (round) CircleShape else RoundedCornerShape(14.dp))) {
+        Box(Modifier) {
             Cover(coverUri, if (round) Icons.Rounded.Person else Icons.Rounded.Album, if (round) CircleShape else RoundedCornerShape(14.dp), 76.dp)
         }
         Spacer(Modifier.width(14.dp))

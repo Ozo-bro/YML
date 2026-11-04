@@ -90,7 +90,7 @@ fun MiniPlayer(
             .height(62.dp)
             .offset { IntOffset(offsetX.value.roundToInt(), 0) }
             .graphicsLayer { alpha = 1f - (abs(offsetX.value) / (300f * density.density)).coerceIn(0f, 0.8f) }
-            .shadow(elevation = 18.dp, shape = MiniShape, spotColor = Color(0x99000000), ambientColor = Color(0x55000000))
+            
             .clip(MiniShape)
             .background(HiFi.BarFill)
             .border(1.dp, Color.White.copy(alpha = 0.12f), MiniShape)
@@ -135,7 +135,7 @@ fun MiniPlayer(
             Box(
                 modifier = coverModifier
                     .size(44.dp)
-                    .shadow(6.dp, RoundedCornerShape(12.dp))
+                    
                     .clip(RoundedCornerShape(12.dp))
                     .background(if (track.isRadio) Color.White else Color(0xFF1C1F28)),
                 contentAlignment = Alignment.Center

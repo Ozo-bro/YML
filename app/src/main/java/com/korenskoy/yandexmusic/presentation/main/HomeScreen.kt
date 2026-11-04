@@ -272,7 +272,7 @@ private fun UpNextCard(track: TrackDetailsDto, onClick: () -> Unit) {
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .size(104.dp)
-                .shadow(10.dp, RoundedCornerShape(12.dp))
+                
                 .clip(RoundedCornerShape(12.dp))
                 .background(Color(0xFF1C1F28))
         )

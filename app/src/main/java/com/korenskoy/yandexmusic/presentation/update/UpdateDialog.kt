@@ -99,9 +99,7 @@ fun UpdateDialog(
                             .size(44.dp)
                             .clip(CircleShape)
                             .background(
-                                Brush.linearGradient(
-                                    listOf(Color(0xFF3D8BFF), Color(0xFF0A55D6))
-                                )
+                                androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Accent)
                             ),
                         contentAlignment = Alignment.Center
                     ) {

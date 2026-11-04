@@ -71,6 +71,15 @@ class SettingsRepositoryImpl @Inject constructor(
         context.dataStore.edit { prefs -> prefs[WAVE_CACHE_LIMIT_KEY] = limitMb }
     }
 
+    private val OPEN_CAR_ON_START_KEY = booleanPreferencesKey("open_car_mode_on_start")
+    override val openCarModeOnStart: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[OPEN_CAR_ON_START_KEY] ?: true
+    }
+
+    override suspend fun setOpenCarModeOnStart(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[OPEN_CAR_ON_START_KEY] = enabled }
+    }
+
     private val SHOW_LYRICS_KEY = booleanPreferencesKey("show_lyrics")
     override val showLyrics: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[SHOW_LYRICS_KEY] ?: true

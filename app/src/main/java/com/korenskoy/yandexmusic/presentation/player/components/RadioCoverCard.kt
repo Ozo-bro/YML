@@ -54,12 +54,7 @@ fun RadioCoverCard(
 
     Box(
         modifier = modifier
-            .shadow(
-                elevation = 20.dp,
-                shape = RoundedCornerShape(24.dp),
-                spotColor = Color(0xFF0A6CFF).copy(alpha = 0.25f),
-                ambientColor = Color.Black.copy(alpha = 0.5f)
-            )
+            
             .clip(RoundedCornerShape(24.dp))
             .background(
                 Brush.radialGradient(
@@ -126,11 +121,7 @@ fun RadioCoverCard(
                     scaleX = scale
                     scaleY = scale
                 }
-                .shadow(
-                    elevation = 16.dp,
-                    shape = CircleShape,
-                    spotColor = Color.Black.copy(alpha = 0.6f)
-                )
+                
                 .clip(CircleShape)
                 .background(Color.White.copy(alpha = 0.08f)),
             contentAlignment = Alignment.Center

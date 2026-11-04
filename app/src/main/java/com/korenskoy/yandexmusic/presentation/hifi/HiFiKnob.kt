@@ -12,6 +12,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.offset
@@ -78,49 +79,9 @@ fun HiFiKnob(
                 scaleX = scale
                 scaleY = scale
             }
-            .drawWithCache {
-                val r = this.size.minDimension / 2f
-                val c = Offset(this.size.width / 2f, this.size.height / 2f)
-                val rimWidth = max(1.5.dp.toPx(), r * 0.032f)
-                val faceR = r - rimWidth
-                val shadow = Brush.radialGradient(
-                    colors = listOf(Color.Black.copy(alpha = 0.6f), Color.Transparent),
-                    center = c + Offset(0f, r * 0.22f),
-                    radius = r * 1.32f
-                )
-                val rim = Brush.sweepGradient(HiFi.MetalSweep, center = c)
-                val face = Brush.radialGradient(
-                    colors = HiFi.KnobFace,
-                    center = c - Offset(0f, faceR * 0.44f),
-                    radius = faceR * 1.4f
-                )
-                val bottomShade = Brush.verticalGradient(
-                    0f to Color.Transparent, 0.6f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.45f),
-                    startY = c.y - faceR, endY = c.y + faceR
-                )
-                val grooveStep = 3.dp.toPx()
-                val grooveStroke = Stroke(width = 1f)
-                onDrawBehind {
-                    drawCircle(shadow, radius = r * 1.32f, center = c + Offset(0f, r * 0.22f))
-                    drawCircle(rim, radius = r, center = c)
-                    drawCircle(face, radius = faceR, center = c)
-                    if (grooves) {
-                        var gr = faceR * 0.2f
-                        while (gr < faceR) {
-                            drawCircle(Color.White.copy(alpha = 0.03f), radius = gr, center = c, style = grooveStroke)
-                            gr += grooveStep
-                        }
-                    }
-                    drawCircle(bottomShade, radius = faceR, center = c)
-                    drawArc(
-                        color = Color.White.copy(alpha = 0.16f),
-                        startAngle = 200f, sweepAngle = 140f, useCenter = false,
-                        topLeft = c - Offset(faceR - 1f, faceR - 1f),
-                        size = androidx.compose.ui.geometry.Size((faceR - 1f) * 2, (faceR - 1f) * 2),
-                        style = Stroke(width = 1.2.dp.toPx())
-                    )
-                }
-            }
+            // Flat: a solid round surface
+            .clip(CircleShape)
+            .background(HiFi.Surface)
             .clip(CircleShape)
             .clickable(interactionSource = interaction, indication = null, role = Role.Button) {
                 view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)

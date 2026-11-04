@@ -66,64 +66,6 @@ fun HiFiBackdrop(
     intensity: Float = 1f,
     bottomFade: Boolean = true
 ) {
-    val lite = LocalHiFiLite.current
-    val liveBlur = !lite && coverUrl != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(HiFi.Ground)
-    ) {
-        if (liveBlur) {
-            val context = LocalContext.current
-            AsyncImage(
-                model = ImageRequest.Builder(context).data(coverUrl).size(160).build(),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer { alpha = 0.55f * intensity }
-                    .blur(90.dp, BlurredEdgeTreatment.Rectangle)
-            )
-        }
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .drawWithCache {
-                    val maxDim = max(size.width, size.height)
-                    val center = Offset(size.width * glowCenter.x, size.height * glowCenter.y)
-                    val glowAlpha = if (liveBlur) 0.30f else 0.55f
-                    val glow = Brush.radialGradient(
-                        colors = listOf(
-                            tint.primary.copy(alpha = glowAlpha * intensity),
-                            tint.primary.copy(alpha = glowAlpha * 0.3f * intensity),
-                            Color.Transparent
-                        ),
-                        center = center,
-                        radius = maxDim * 0.72f
-                    )
-                    val second = Brush.radialGradient(
-                        colors = listOf(tint.secondary.copy(alpha = 0.40f * intensity), Color.Transparent),
-                        center = Offset(size.width * (1f - glowCenter.x * 0.3f), size.height * (glowCenter.y + 0.32f)),
-                        radius = maxDim * 0.5f
-                    )
-                    val vignette = Brush.radialGradient(
-                        colors = listOf(Color.Transparent, Color.Transparent, HiFi.Ground.copy(alpha = 0.82f)),
-                        center = Offset(size.width * 0.5f, size.height * 0.36f),
-                        radius = maxDim * 0.85f
-                    )
-                    val fade = Brush.verticalGradient(
-                        0f to Color.Transparent,
-                        0.55f to Color.Transparent,
-                        1f to HiFi.Ground.copy(alpha = 0.92f)
-                    )
-                    onDrawBehind {
-                        drawRect(glow)
-                        drawRect(second)
-                        drawRect(vignette)
-                        if (bottomFade) drawRect(fade)
-                    }
-                }
-                .hifiGrain(enabled = !lite, alpha = 0.45f)
-        )
-    }
+    // Flat design: one solid ground under every screen (no cover blur, glow, vignette or grain)
+    Box(modifier = modifier.fillMaxSize().background(HiFi.Ground))
 }

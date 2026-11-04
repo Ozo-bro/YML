@@ -255,7 +255,7 @@ internal fun Cover(uri: String?, placeholder: ImageVector, shape: Shape, size: D
         modifier = Modifier
             .size(size)
             .clip(shape)
-            .background(Brush.linearGradient(listOf(Color(0xFF2A3346), Color(0xFF181B24)))),
+            .background(androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Surface)),
         contentAlignment = Alignment.Center
     ) {
         Icon(placeholder, contentDescription = null, tint = Color.White.copy(alpha = 0.35f), modifier = Modifier.size(size / 3))
@@ -275,8 +275,8 @@ private fun PlayButton(icon: ImageVector, label: String, primary: Boolean, modif
             .height(42.dp)
             .clip(CircleShape)
             .background(
-                if (primary) Brush.linearGradient(listOf(Color(0xFF3D8BFF), Color(0xFF0A6CFF), Color(0xFF0A55D6)))
-                else Brush.verticalGradient(listOf(Color(0x352A2A38), Color(0x201E1E28)))
+                if (primary) androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Accent)
+                else androidx.compose.ui.graphics.SolidColor(com.korenskoy.yandexmusic.presentation.hifi.HiFi.Surface)
             )
             .border(BorderStroke(1.dp, Color.White.copy(alpha = if (primary) 0.6f else 0.25f)), CircleShape)
             .clickable(onClick = onClick),
