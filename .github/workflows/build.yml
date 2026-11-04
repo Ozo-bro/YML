@@ -92,6 +92,8 @@ jobs:
           ./gradlew testDebugUnitTest --no-daemon --continue -Proborazzi.test.record=true
       - name: Publish car screens to the ci-screens branch (for review)
         if: always()
+        # Review aid only: a GitHub hiccup here must not fail the checks
+        continue-on-error: true
         env:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -105,7 +107,11 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
           git add . && git commit -qm "Car screens for ${GITHUB_SHA::7}"
-          git push -qf "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" ci-screens
+          for attempt in 1 2 3 4; do
+            git push -qf "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" ci-screens && exit 0
+            sleep $((attempt * 5))
+          done
+          exit 1
       - uses: actions/upload-artifact@v4
         if: always()
         with:
