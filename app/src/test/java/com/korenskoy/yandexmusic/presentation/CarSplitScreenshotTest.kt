@@ -137,6 +137,26 @@ class CarSplitScreenshotTest {
     @Config(qualifiers = "w1040dp-h610dp-land-mdpi")
     fun splitWideQueue() { show(); snap("split_1040x610_queue") }
 
+    /** "Моя волна" in the split window with nothing of the wave playing (as on the head unit). */
+    @Test
+    @Config(qualifiers = "w1040dp-h610dp-land-mdpi")
+    fun waveSplitIdle() {
+        compose.mainClock.autoAdvance = false
+        compose.setContent {
+            YandexMusicTheme {
+                Box(Modifier.fillMaxSize()) {
+                    HiFiBackdrop(tint = tint)
+                    com.korenskoy.yandexmusic.presentation.main.HomeScreen(
+                        waveTrack = null, isPlaying = false, isLoading = false, isLiked = false, progress = { 0L },
+                        upNext = emptyList(), onPlayPause = {}, onLike = {}, onDislike = {}, onOpenQueue = {}, onUpNextClick = {}
+                    )
+                }
+            }
+        }
+        frames()
+        snap("wave_split_idle")
+    }
+
     // No split: the whole 1920×720 screen
     @Test
     @Config(qualifiers = "w1920dp-h690dp-land-mdpi")

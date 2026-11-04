@@ -95,7 +95,8 @@ fun HomeScreen(
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     val windowSize = com.korenskoy.yandexmusic.utils.currentWindowSizeDp()
     val minDim = minOf(windowSize.widthDp, windowSize.heightDp).toFloat()
-    val knobSize = (minDim * if (isLandscape) 0.34f else 0.36f).dp.coerceIn(120.dp, 200.dp)
+    // Smaller in landscape (a head unit's split window is low): the ring with it stays well clear of the mini player
+    val knobSize = (minDim * if (isLandscape) 0.22f else 0.30f).dp.coerceIn(96.dp, 170.dp)
 
     val duration = (waveTrack?.durationMs ?: 0L).coerceAtLeast(0L)
     val progressFraction = { if (duration > 0) progress().toFloat() / duration else 0f }
@@ -156,14 +157,14 @@ fun HomeScreen(
 /** Knob + ring. The ring is ~1.7× the knob: room for the longest bars. */
 @Composable
 private fun WaveInstrument(knobSize: Dp, mode: RingMode, isPlaying: Boolean, progress: () -> Float, onPlayPause: () -> Unit) {
-    val ringSize = knobSize * 1.72f
+    val ringSize = knobSize * 1.5f
     Box(Modifier.size(ringSize), contentAlignment = Alignment.Center) {
         SpectrumRing(
             mode = mode,
             progress = progress,
             bars = 72,
-            innerRadius = knobSize / 2 + knobSize * 0.08f,
-            maxLength = knobSize * 0.24f,
+            innerRadius = knobSize / 2 + knobSize * 0.06f,
+            maxLength = knobSize * 0.16f,
             modifier = Modifier.size(ringSize)
         )
         HiFiKnob(
