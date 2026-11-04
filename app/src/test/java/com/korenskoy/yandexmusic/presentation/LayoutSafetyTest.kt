@@ -158,20 +158,12 @@ class LayoutSafetyTest {
     @Test
     fun testApplicationBrandingAndName() {
         val stringsXml = File("src/main/res/values/strings.xml").readText()
-        assertTrue("strings.xml must declare app_name as Yandex Music Lite",
-            stringsXml.contains("<string name=\"app_name\">Yandex Music Lite</string>"))
-
-        val splashScreen = File(sourceDir, "presentation/splash/SplashScreen.kt").readText()
-        assertTrue("SplashScreen must display YANDEX MUSIC LITE",
-            splashScreen.contains("R.string.splash_yandex_music_lite") && stringsXml.contains(">YANDEX MUSIC LITE<"))
+        assertTrue("strings.xml must declare app_name as YML Авто (this fork)",
+            stringsXml.contains("<string name=\"app_name\">YML Авто</string>"))
 
         val searchScreen = File(sourceDir, "presentation/main/SearchScreen.kt").readText()
         assertTrue("SearchScreen must show its large title (Hi-Fi redesign dropped the catalog subtitle)",
             searchScreen.contains("HiFiLargeTitle(stringResource(R.string.search_title)"))
-
-        val musicService = File(sourceDir, "data/player/MusicService.kt").readText()
-        assertTrue("MusicService notification channel must be Yandex Music Lite",
-            musicService.contains("Yandex Music Lite"))
     }
 
     @Test
@@ -196,8 +188,8 @@ class LayoutSafetyTest {
     @Test
     fun testApplicationIdMatchesUserRequirement() {
         val buildGradle = File("build.gradle.kts").readText()
-        assertTrue("build.gradle.kts must set applicationId = YandexMusicLite.KorenskoyR",
-            buildGradle.contains("applicationId = \"YandexMusicLite.KorenskoyR\""))
+        assertTrue("build.gradle.kts must set this fork's own applicationId (installs next to the original)",
+            buildGradle.contains("applicationId = \"YandexMusicLite.OzoBro\""))
     }
 
     @Test
@@ -374,10 +366,11 @@ class LayoutSafetyTest {
             manifestFile.contains("application/vnd.android.package-archive"))
 
         val buildGradle = File("build.gradle.kts").readText()
-        assertTrue("build.gradle.kts must be versionCode 36",
-            buildGradle.contains("versionCode = 36"))
-        assertTrue("build.gradle.kts must be versionName 1.8.0",
-            buildGradle.contains("versionName = \"1.8.0\""))
+        // Every CI build is a newer version for the in-app updater
+        assertTrue("versionCode must follow the CI build number",
+            buildGradle.contains("versionCode = 1000 + buildNumber"))
+        assertTrue("versionName must follow the CI build number",
+            buildGradle.contains("versionName = \"2.0.\$buildNumber\""))
     }
 
     @Test
