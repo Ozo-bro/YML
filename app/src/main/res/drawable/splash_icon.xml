@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Splash: the same logo as the launcher icon -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:scaleX="0.9"
+        android:scaleY="0.9">
+        <path
+            android:pathData="M54,24a30,30 0 1,1 0,60a30,30 0 1,1 0,-60"
+            android:strokeColor="#3A3F47"
+            android:strokeWidth="5" />
+        <path
+            android:pathData="M54,24a30,30 0 0,1 26,45"
+            android:strokeColor="#3D8BFF"
+            android:strokeLineCap="round"
+            android:strokeWidth="5" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M56,66V40l13,-3v7l-8,2v20z" />
+        <group
+            android:pivotX="50"
+            android:pivotY="66"
+            android:rotation="-20">
+            <path
+                android:fillColor="#FFFFFF"
+                android:pathData="M42,66a8,6.5 0 1,0 16,0a8,6.5 0 1,0 -16,0" />
+        </group>
+    </group>
+</vector>

@@ -3,7 +3,10 @@ package com.korenskoy.yandexmusic.presentation
 import android.app.Application
 import android.os.Looper
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -155,6 +158,25 @@ class CarSplitScreenshotTest {
         }
         frames()
         snap("wave_split_idle")
+    }
+
+    /** The launcher icon's layers as Android draws them (ground + foreground; the themed one in white). */
+    @Test
+    @Config(qualifiers = "w300dp-h150dp-land-xxhdpi")
+    fun launcherIcon() {
+        compose.setContent {
+            androidx.compose.foundation.layout.Row {
+                Box(Modifier.size(144.dp)) {
+                    androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(com.korenskoy.yandexmusic.R.drawable.ic_launcher_background), null, Modifier.fillMaxSize())
+                    androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(com.korenskoy.yandexmusic.R.drawable.ic_launcher_foreground), null, Modifier.fillMaxSize())
+                }
+                Box(Modifier.size(144.dp).background(Color(0xFF1B3A6B))) {
+                    androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(com.korenskoy.yandexmusic.R.drawable.ic_launcher_monochrome), null, Modifier.fillMaxSize())
+                }
+            }
+        }
+        frames()
+        snap("launcher_icon")
     }
 
     // No split: the whole 1920×720 screen
