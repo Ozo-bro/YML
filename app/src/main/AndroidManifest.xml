@@ -13,6 +13,8 @@
 
     <!-- Android 11+ package visibility: lets the in-app updater find the system package installer -->
     <queries>
+        <!-- Poweramp Equalizer: told about the audio session directly (see AudioEffectSession) -->
+        <package android:name="com.maxmpz.equalizer" />
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:mimeType="application/vnd.android.package-archive" />

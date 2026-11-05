@@ -71,6 +71,20 @@ object PlayerModule {
     ): com.korenskoy.yandexmusic.domain.repository.PlayerRepository {
         val playerA = createConfiguredExoPlayer(context)
         val playerB = createConfiguredExoPlayer(context)
+        // One audio session for both players, announced to equalizer apps (Poweramp Equalizer etc.):
+        // they attach in the background, and the effect stays on across crossfades
+        val session = com.korenskoy.yandexmusic.data.player.AudioEffectSession.obtain(context)
+        if (session > 0) {
+            playerA.setAudioSessionId(session)
+            playerB.setAudioSessionId(session)
+        }
+        val announce = object : androidx.media3.common.Player.Listener {
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                if (isPlaying) com.korenskoy.yandexmusic.data.player.AudioEffectSession.announceOpen(context)
+            }
+        }
+        playerA.addListener(announce)
+        playerB.addListener(announce)
         return com.korenskoy.yandexmusic.data.repository.PlayerRepositoryImpl(
             playerA, playerB, downloadManager, preloadManager, wakeLockHelper
         )

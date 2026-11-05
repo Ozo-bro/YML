@@ -421,6 +421,7 @@ class MusicService : MediaLibraryService() {
     }
 
     override fun onDestroy() {
+        AudioEffectSession.announceClose(this)
         serviceScope.cancel()
         abandonSystemAudioFocus()
         mediaLibrarySession?.run {
