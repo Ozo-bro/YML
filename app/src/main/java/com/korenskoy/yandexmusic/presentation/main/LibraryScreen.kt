@@ -104,6 +104,9 @@ fun LibraryScreen(
     isPlaying: Boolean,
     likedTrackIds: Set<String>,
     downloadedTrackIds: Set<String>,
+    /** Everything on the device (liked, playlists, offline wave). */
+    downloadedTracks: List<com.korenskoy.yandexmusic.data.dto.TrackDetailsDto> = emptyList(),
+    onDownloadedTrackClick: (String) -> Unit = {},
     cacheSizeBytes: Long,
     downloadProgress: DownloadProgressInfo?,
     onTrackClick: (String) -> Unit,
@@ -167,9 +170,11 @@ fun LibraryScreen(
     val isLandscape = androidx.compose.ui.platform.LocalConfiguration.current.orientation ==
         android.content.res.Configuration.ORIENTATION_LANDSCAPE
     val contentStart = if (isLandscape) 140.dp else 20.dp
-    val contentBottom = if (isLandscape) 90.dp else (if (hasActiveTrack) 168.dp else 100.dp)
+    // Landscape: the main screen already keeps the page above the mini player
+    val contentBottom = if (isLandscape) 24.dp else (if (hasActiveTrack) 168.dp else 100.dp)
     val columns = if (isLandscape) 4 else 2
-    val downloaded = remember(tracks, downloadedTrackIds) { tracks.filter { downloadedTrackIds.contains(it.idString) } }
+    // Everything on the device, not only the liked tracks (same list as the car screen's tile)
+    val downloaded = downloadedTracks
 
     if (openedPlaylist != null) {
         PlaylistScreen(
@@ -251,6 +256,7 @@ fun LibraryScreen(
             }
             LibrarySection.LIKED, LibrarySection.DOWNLOADED -> {
                 val list = if (shown == LibrarySection.LIKED) tracks else downloaded
+                val onListTrackClick: (String) -> Unit = if (shown == LibrarySection.LIKED) onTrackClick else onDownloadedTrackClick
                 LazyColumn(modifier = Modifier.fillMaxSize().statusBarsPadding(), contentPadding = PaddingValues(start = if (isLandscape) 132.dp else 8.dp, end = 8.dp, bottom = contentBottom)) {
                     item(key = "header") {
                         SectionHeader(
@@ -280,14 +286,14 @@ fun LibraryScreen(
                         items(list.chunked(2), key = { row -> row.joinToString("|") { it.idString } }, contentType = { "track_row" }) { rowItems ->
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                                 rowItems.forEach { track ->
-                                    Box(Modifier.weight(1f)) { LibraryTrack(track, currentTrackId, isPlaying, likedTrackIds, downloadedTrackIds, onToggleLike, onTrackClick) }
+                                    Box(Modifier.weight(1f)) { LibraryTrack(track, currentTrackId, isPlaying, likedTrackIds, downloadedTrackIds, onToggleLike, onListTrackClick) }
                                 }
                                 if (rowItems.size == 1) Spacer(Modifier.weight(1f))
                             }
                         }
                     } else {
                         items(list, key = { it.idString }, contentType = { "track" }) { track ->
-                            LibraryTrack(track, currentTrackId, isPlaying, likedTrackIds, downloadedTrackIds, onToggleLike, onTrackClick)
+                            LibraryTrack(track, currentTrackId, isPlaying, likedTrackIds, downloadedTrackIds, onToggleLike, onListTrackClick)
                         }
                     }
                 }

@@ -38,8 +38,17 @@ class MainViewModel @Inject constructor(
     private val libraryRepository: LibraryRepository,
     private val downloadManager: TrackDownloadManager,
     private val downloadScheduler: DownloadScheduler,
-    waveCache: com.korenskoy.yandexmusic.data.download.WaveCache
+    waveCache: com.korenskoy.yandexmusic.data.download.WaveCache,
+    downloadedLibrary: com.korenskoy.yandexmusic.data.download.DownloadedLibrary
 ) : ViewModel() {
+
+    /** Everything on the device: liked, playlist tracks and the offline wave. */
+    val downloadedTracks: StateFlow<List<TrackDetailsDto>> = downloadedLibrary.tracks
+
+    /** A track from "Скачанные": plays on through the downloaded music. */
+    fun playDownloadedTrack(trackId: String) =
+        playbackController.playTrack(trackId, downloadedTracks.value, PlaylistSource.OFFLINE)
+
 
     val isAuthorized = authRepository.isAuthorized()
         .stateIn(viewModelScope, SharingStarted.Eagerly, authRepository.getToken() != null)

@@ -86,6 +86,10 @@ class UserPlaylistsRepository @Inject constructor(
         }
     }
 
+    /** The playlist's tracks if they are cached for its current revision; no network. */
+    suspend fun cachedTracks(playlist: UserPlaylistDto): List<TrackDetailsDto> =
+        cacheManager.loadPlaylistTracks(activeFolder, playlist.key, playlist.revision)
+
     /** A playlist by [UserPlaylistDto.key], own or liked. */
     fun find(key: String): UserPlaylistDto? =
         _playlists.value.firstOrNull { it.key == key } ?: _likedPlaylists.value.firstOrNull { it.key == key }

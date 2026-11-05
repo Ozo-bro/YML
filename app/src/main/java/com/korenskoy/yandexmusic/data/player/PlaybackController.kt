@@ -60,7 +60,8 @@ class PlaybackController @Inject constructor(
     private val stateStore: PlaybackStateStore,
     private val settingsRepository: com.korenskoy.yandexmusic.domain.repository.SettingsRepository,
     private val networkMonitor: com.korenskoy.yandexmusic.data.network.NetworkMonitor,
-    private val waveCache: com.korenskoy.yandexmusic.data.download.WaveCache
+    private val waveCache: com.korenskoy.yandexmusic.data.download.WaveCache,
+    private val downloadedTracks: com.korenskoy.yandexmusic.data.download.DownloadedLibrary
 ) {
     private val scope = CoroutineScope(
         SupervisorJob() + Dispatchers.Main.immediate + CoroutineExceptionHandler { _, e ->
@@ -775,9 +776,9 @@ class PlaybackController @Inject constructor(
         return ok
     }
 
-    /** Downloaded liked tracks plus the offline wave, without repeats. */
+    /** Everything on the device (liked, playlists, offline wave), without repeats. */
     private fun downloadedLibrary(): List<TrackDetailsDto> =
-        (libraryTracks + waveCache.tracks.value)
+        (downloadedTracks.tracks.value + libraryTracks + waveCache.tracks.value)
             .distinctBy { it.idString }
             .filter { downloadManager.isKnownDownloaded(it.idString) }
 

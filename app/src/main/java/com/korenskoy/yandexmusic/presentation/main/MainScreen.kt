@@ -80,6 +80,7 @@ fun MainScreen(
     val autoDownloadEnabled by viewModel.autoDownloadEnabled.collectAsState()
     val likedTrackIds by viewModel.likedTrackIds.collectAsState()
     val downloadedTrackIds by viewModel.downloadedTrackIds.collectAsState()
+    val downloadedTracks by viewModel.downloadedTracks.collectAsState()
     
     val searchQuery by searchVm.query.collectAsState()
     val searchResults by searchVm.results.collectAsState()
@@ -315,6 +316,8 @@ fun MainScreen(
                         isPlaying = isPlaying,
                         likedTrackIds = likedTrackIds,
                         downloadedTrackIds = downloadedTrackIds,
+                        downloadedTracks = downloadedTracks,
+                        onDownloadedTrackClick = { viewModel.playDownloadedTrack(it) },
                         cacheSizeBytes = cacheSizeBytes,
                         downloadProgress = downloadProgress,
                         onTrackClick = { id -> viewModel.playTrack(id, tracks, PlaylistSource.LIBRARY) },
