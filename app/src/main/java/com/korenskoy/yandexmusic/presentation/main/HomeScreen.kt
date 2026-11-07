@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -29,6 +30,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
@@ -90,7 +92,8 @@ fun HomeScreen(
     onDislike: () -> Unit,
     onOpenQueue: () -> Unit,
     onUpNextClick: (TrackDetailsDto) -> Unit,
-    contentBottom: Dp = 100.dp
+    contentBottom: Dp = 100.dp,
+    onOpenSettings: (() -> Unit)? = null
 ) {
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     val windowSize = com.korenskoy.yandexmusic.utils.currentWindowSizeDp()
@@ -125,12 +128,20 @@ fun HomeScreen(
                 .padding(start = 140.dp, end = 24.dp, top = 16.dp, bottom = contentBottom),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { instrument() }
-            Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-                HiFiLargeTitle(stringResource(R.string.wave_title))
-                Spacer(Modifier.height(20.dp))
+            // The knob takes only its own width; the rest goes to the track and a tall "next" list
+            Box(Modifier.padding(horizontal = 24.dp), contentAlignment = Alignment.Center) { instrument() }
+            Column(Modifier.weight(1f).fillMaxHeight().padding(start = 8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    HiFiLargeTitle(stringResource(R.string.wave_title), modifier = Modifier.weight(1f))
+                    if (onOpenSettings != null) {
+                        GlassCircleButton(onClick = onOpenSettings, contentDescription = stringResource(R.string.library_settings)) {
+                            Icon(Icons.Rounded.Tune, contentDescription = null, tint = Color.White, modifier = Modifier.size(26.dp))
+                        }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
                 WaveTrackInfo(waveTrack, isLiked, onLike, onDislike)
-                WaveUpNext(upNext, onOpenQueue, onUpNextClick, horizontalPadding = 0.dp)
+                WaveUpNextList(upNext, onOpenQueue, onUpNextClick, Modifier.weight(1f))
             }
         }
     } else {
@@ -223,6 +234,49 @@ private fun WaveTrackInfo(track: TrackDetailsDto?, isLiked: Boolean, onLike: () 
                         tint = if (isLiked) HiFi.Like else Color.White.copy(alpha = 0.86f),
                         modifier = Modifier.size(21.dp)
                     )
+                }
+            }
+        }
+    }
+}
+
+/** Landscape: what comes next in the wave as a tall list (more of it fits than in a row of covers). */
+@Composable
+private fun WaveUpNextList(
+    upNext: List<TrackDetailsDto>,
+    onOpenQueue: () -> Unit,
+    onClick: (TrackDetailsDto) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (upNext.isEmpty()) return
+    val context = LocalContext.current
+    Column(modifier) {
+        Spacer(Modifier.height(14.dp))
+        HiFiSectionHeader(text = stringResource(R.string.wave_next_up)) {
+            HiFiTextAction(text = stringResource(R.string.wave_queue), onClick = onOpenQueue)
+            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = Color.White.copy(alpha = 0.6f), modifier = Modifier.size(18.dp))
+        }
+        androidx.compose.foundation.lazy.LazyColumn(Modifier.fillMaxSize()) {
+            items(upNext, key = { it.idString }, contentType = { "up_next_row" }) { track ->
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .clickable(role = Role.Button) { onClick(track) }
+                        .padding(vertical = 6.dp, horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context).data(track.coverUri.toCoverUrl("200x200")).size(200).build(),
+                        contentDescription = null,
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                        modifier = Modifier.size(52.dp).clip(RoundedCornerShape(10.dp)).background(HiFi.Surface)
+                    )
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(track.title.orEmpty(), color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(track.artists.joinToString { it.name ?: "" }, color = HiFi.TextSecondary, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
                 }
             }
         }

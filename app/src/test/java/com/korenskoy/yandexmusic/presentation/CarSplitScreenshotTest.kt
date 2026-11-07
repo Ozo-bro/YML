@@ -152,14 +152,15 @@ class CarSplitScreenshotTest {
                 Box(Modifier.fillMaxSize()) {
                     HiFiBackdrop(tint = tint)
                     com.korenskoy.yandexmusic.presentation.main.HomeScreen(
-                        waveTrack = null, isPlaying = false, isLoading = false, isLiked = false, progress = { 0L },
-                        upNext = emptyList(), onPlayPause = {}, onLike = {}, onDislike = {}, onOpenQueue = {}, onUpNextClick = {}
+                        waveTrack = current, isPlaying = true, isLoading = false, isLiked = true, progress = { 82_000L },
+                        upNext = listOf(next, track("3", "Кукушка", "Кино"), track("4", "Перемен", "Кино"), track("5", "Пачка сигарет", "Кино"), track("6", "Спокойная ночь", "Кино")),
+                        onPlayPause = {}, onLike = {}, onDislike = {}, onOpenQueue = {}, onUpNextClick = {}, onOpenSettings = {}
                     )
                 }
             }
         }
         frames()
-        snap("wave_split_idle")
+        snap("wave_split")
     }
 
     /** The launcher icon's layers as Android draws them (ground + foreground; the themed one in white). */

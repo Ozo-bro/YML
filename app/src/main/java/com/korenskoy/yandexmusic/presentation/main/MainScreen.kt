@@ -141,7 +141,14 @@ fun MainScreen(
     val openCarModeOnStart by viewModel.openCarModeOnStart.collectAsState()
     // The car screen's settings button: open the settings sheet, come back to the car screen after
     var openSettingsRequest by remember { mutableStateOf(false) }
-    var settingsFromCar by remember { mutableStateOf(false) }
+    // Where the settings were opened from (car screen, wave page): back there once they close
+    var settingsReturnTab by remember { mutableStateOf<MainTab?>(null) }
+    val openSettingsFrom: (MainTab) -> Unit = { from ->
+        settingsReturnTab = from
+        openSettingsRequest = true
+        playlistsVm.close() // the library's own page, not an opened playlist
+        currentTab = MainTab.LIBRARY
+    }
     // App start: straight into the car screen with the music on (a setting, on by default)
     LaunchedEffect(Unit) {
         if (viewModel.takeCarLaunch()) {
@@ -272,7 +279,8 @@ fun MainScreen(
                         onDislike = { currentTrack?.let { viewModel.dislikeTrack(it) } },
                         onOpenQueue = { isPlayerExpanded = true },
                         onUpNextClick = { viewModel.playTrack(it.idString, currentPlaylist, PlaylistSource.VIBE) },
-                        contentBottom = if (waveActive && !isLandscape) 100.dp else contentBottom
+                        contentBottom = if (waveActive && !isLandscape) 100.dp else contentBottom,
+                        onOpenSettings = { openSettingsFrom(MainTab.HOME) }
                     )
                     MainTab.SEARCH -> SearchScreen(
                         query = searchQuery,
@@ -335,10 +343,8 @@ fun MainScreen(
                         openSettingsRequest = openSettingsRequest,
                         onSettingsRequestHandled = { openSettingsRequest = false },
                         onSettingsClosed = {
-                            if (settingsFromCar) {
-                                settingsFromCar = false
-                                currentTab = MainTab.CAR
-                            }
+                            settingsReturnTab?.let { currentTab = it }
+                            settingsReturnTab = null
                         },
                         openCarModeOnStart = openCarModeOnStart,
                         onOpenCarModeOnStartChange = { viewModel.setOpenCarModeOnStart(it) },
@@ -421,12 +427,7 @@ fun MainScreen(
                             onQueueTrackClick = { viewModel.playTrack(it, currentPlaylist) },
                             onEnter = { viewModel.startIfIdle(resumeRestored = false) },
                             offline = offline,
-                            onOpenSettings = {
-                                settingsFromCar = true
-                                openSettingsRequest = true
-                                playlistsVm.close() // the library's own page, not an opened playlist
-                                currentTab = MainTab.LIBRARY
-                            }
+                            onOpenSettings = { openSettingsFrom(MainTab.CAR) }
                         )
                     }
                 }
