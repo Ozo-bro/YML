@@ -101,7 +101,9 @@ class UserPlaylistsRepository @Inject constructor(
         val cacheKind = playlist.key
         cacheManager.loadPlaylistTracks(folder, cacheKind, playlist.revision).takeIf { it.isNotEmpty() }?.let { return it }
 
-        val owner = if (playlist.isLikedByUser) playlist.ownerUidString else libraryRepository.resolveUid()
+        // The owner's uid comes with every playlist (own ones too): no separate account lookup that can
+        // fall back to "me", which the playlist endpoint does not accept
+        val owner = playlist.ownerUidString.ifEmpty { libraryRepository.resolveUid() }
         val full = api.getUserPlaylist(owner, playlist.kindString).result ?: return emptyList()
         val tracks = resolveTracks(folder, full, cacheKind)
         if (tracks.isNotEmpty()) cacheManager.savePlaylistTracks(folder, cacheKind, full.revision, tracks)

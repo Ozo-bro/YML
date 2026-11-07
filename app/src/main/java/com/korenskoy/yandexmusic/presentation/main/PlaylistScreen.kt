@@ -332,12 +332,16 @@ fun PlaylistScreen(
                         fontSize = 15.sp
                     )
                     if (opened.failed) {
+                        opened.error?.let {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(it, color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.padding(horizontal = 24.dp))
+                        }
                         Spacer(modifier = Modifier.height(12.dp))
                         Button(
                             onClick = onRetry,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0A6CFF)),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.White),
                             shape = RoundedCornerShape(16.dp)
-                        ) { Text(stringResource(R.string.playlist_retry), color = Color.White) }
+                        ) { Text(stringResource(R.string.playlist_retry), color = com.korenskoy.yandexmusic.presentation.hifi.HiFi.Ground) }
                     }
                 }
                 else -> LazyColumn(

@@ -83,7 +83,7 @@ class PlaylistsViewModel @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Playlist load failed", e)
-                OpenedPlaylist(playlist, isLoading = false, failed = true)
+                OpenedPlaylist(playlist, isLoading = false, failed = true, error = describe(e))
             }
             if (_opened.value?.playlist?.key == playlist.key) _opened.value = loaded
         }
@@ -139,7 +139,7 @@ class PlaylistsViewModel @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Playlist start failed", e)
-                _messages.tryEmit(context.getString(R.string.playlist_msg_failed))
+                _messages.tryEmit(context.getString(R.string.playlist_msg_failed) + " (" + describe(e) + ")")
             } finally {
                 if (_starting.value == playlist.key) _starting.value = null
             }
@@ -234,5 +234,17 @@ data class OpenedPlaylist(
     val playlist: UserPlaylistDto,
     val tracks: List<TrackDetailsDto> = emptyList(),
     val isLoading: Boolean = true,
-    val failed: Boolean = false
+    val failed: Boolean = false,
+    /** What went wrong, shown under the failure message (helps to tell a network problem from a server answer). */
+    val error: String? = null
 )
+
+/** A short reason for a failed load: the HTTP code and Yandex's message, or the kind of error. */
+internal fun describe(e: Throwable): String = when (e) {
+    is retrofit2.HttpException -> {
+        val body = runCatching { e.response()?.errorBody()?.string() }.getOrNull().orEmpty().take(160)
+        "HTTP ${e.code()}" + if (body.isNotBlank()) ": $body" else ""
+    }
+    is java.io.IOException -> "Нет связи (${e.javaClass.simpleName})"
+    else -> "${e.javaClass.simpleName}: ${e.message.orEmpty().take(160)}"
+}
