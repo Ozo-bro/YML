@@ -51,8 +51,10 @@ fun LyricsView(
             // A little ahead: the line lights up as it starts, not after
             val current by remember(lines) { derivedStateOf { LyricsParser.currentIndex(lines, progress() + 250) } }
             val listState = rememberLazyListState()
+            // A new song: straight back to the top, before its first line starts
+            LaunchedEffect(lines) { listState.scrollToItem(0) }
             LaunchedEffect(current) {
-                if (current >= 0) listState.animateScrollToItem(current)
+                listState.animateScrollToItem(current.coerceAtLeast(0))
             }
             LazyColumn(
                 state = listState,
