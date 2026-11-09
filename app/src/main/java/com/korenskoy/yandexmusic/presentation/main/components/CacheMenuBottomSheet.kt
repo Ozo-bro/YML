@@ -35,6 +35,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
@@ -54,10 +56,13 @@ import androidx.compose.material.icons.rounded.Fullscreen
 import androidx.compose.material.icons.rounded.DirectionsCar
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -67,24 +72,33 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
 import coil3.compose.AsyncImage
 import com.korenskoy.yandexmusic.BuildConfig
 import com.korenskoy.yandexmusic.R
+import com.korenskoy.yandexmusic.domain.repository.SettingsRepository
 import com.korenskoy.yandexmusic.presentation.hifi.GlassCircleButton
 import com.korenskoy.yandexmusic.presentation.hifi.HiFi
 import com.korenskoy.yandexmusic.presentation.hifi.HiFiMotion
@@ -150,8 +164,12 @@ fun CacheMenuBottomSheet(
     val dragOffset = remember { Animatable(0f) }
     var confirmLogout by remember { mutableStateOf(false) }
     var confirmClear by remember { mutableStateOf(false) }
+    var showCustomWaveCacheDialog by remember { mutableStateOf(false) }
 
     Dialog(onDismissRequest = close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+        // Clear the native dialog dim layer so only our animated scrim dims the underlying screen (avoids flash in Car mode).
+        val dialogWindowProvider = LocalView.current.parent as? DialogWindowProvider
+        SideEffect { dialogWindowProvider?.window?.setDimAmount(0f) }
         Box(Modifier.fillMaxSize()) {
             AnimatedVisibility(visibleState = visible, enter = fadeIn(HiFiMotion.standard()), exit = fadeOut(HiFiMotion.standard())) {
                 Box(
@@ -255,18 +273,26 @@ fun CacheMenuBottomSheet(
                                 onClick = { onEnableAutoDownload(!autoDownloadEnabled) },
                                 trailing = { HiFiSwitch(checked = autoDownloadEnabled, onCheckedChange = onEnableAutoDownload) }
                             )
-                            SegmentedRow(Icons.Rounded.Waves, stringResource(R.string.settings_wave_cache)) {
-                                val limits = com.korenskoy.yandexmusic.domain.repository.SettingsRepository.WAVE_CACHE_LIMITS_MB
+                            val waveOffLabel = stringResource(R.string.settings_wave_cache_off)
+                            val waveCustomLabel = stringResource(R.string.settings_wave_cache_custom)
+                            SegmentedRow(
+                                icon = Icons.Rounded.Waves,
+                                title = stringResource(R.string.settings_wave_cache),
+                                value = formatWaveCacheLimitMb(waveCacheLimitMb, waveOffLabel),
+                                onValueClick = { showCustomWaveCacheDialog = true }
+                            ) {
+                                val limits = SettingsRepository.WAVE_CACHE_LIMITS_MB
+                                val presetIndex = limits.indexOf(waveCacheLimitMb)
                                 HiFiSegmented(
-                                    options = limits.map { mb ->
-                                        when {
-                                            mb == 0 -> stringResource(R.string.settings_wave_cache_off)
-                                            mb < 1024 -> "0,5 ГБ"
-                                            else -> "${mb / 1024} ГБ"
+                                    options = limits.map { formatWaveCacheLimitMb(it, waveOffLabel) } + waveCustomLabel,
+                                    selectedIndex = if (presetIndex >= 0) presetIndex else limits.size,
+                                    onSelect = { index ->
+                                        if (index < limits.size) {
+                                            onWaveCacheLimitChange(limits[index])
+                                        } else {
+                                            showCustomWaveCacheDialog = true
                                         }
-                                    },
-                                    selectedIndex = limits.indexOf(waveCacheLimitMb).coerceAtLeast(0),
-                                    onSelect = { onWaveCacheLimitChange(limits[it]) }
+                                    }
                                 )
                                 Spacer(Modifier.height(8.dp))
                                 Text(
@@ -390,6 +416,127 @@ fun CacheMenuBottomSheet(
             onDismiss = { confirmClear = false }
         )
     }
+    if (showCustomWaveCacheDialog) {
+        WaveCacheLimitDialog(
+            currentLimitMb = waveCacheLimitMb,
+            onConfirm = { limitMb ->
+                showCustomWaveCacheDialog = false
+                onWaveCacheLimitChange(limitMb)
+            },
+            onDismiss = { showCustomWaveCacheDialog = false }
+        )
+    }
+}
+
+internal fun parseWaveCacheLimitGbToMb(input: String): Int? {
+    val normalized = input.trim().replace(',', '.')
+    if (normalized.isEmpty()) return null
+    val gb = normalized.toDoubleOrNull() ?: return null
+    if (!gb.isFinite() || gb < 0.0 || gb > SettingsRepository.MAX_WAVE_CACHE_LIMIT_GB) return null
+    return if (gb == 0.0) 0 else (gb * 1024.0).roundToInt().coerceIn(1, SettingsRepository.MAX_WAVE_CACHE_LIMIT_MB)
+}
+
+internal fun formatWaveCacheLimitMb(limitMb: Int, offLabel: String): String = when {
+    limitMb <= 0 -> offLabel
+    limitMb < 1024 -> "$limitMb МБ"
+    limitMb % 1024 == 0 -> "${limitMb / 1024} ГБ"
+    else -> {
+        val tenths = (limitMb * 10.0 / 1024.0).roundToInt()
+        if (tenths * 1024 == limitMb * 10) {
+            String.format(Locale.forLanguageTag("ru"), "%.1f ГБ", limitMb / 1024.0)
+        } else {
+            val value = String.format(Locale.forLanguageTag("ru"), "%.2f", limitMb / 1024.0)
+                .trimEnd('0')
+                .trimEnd(',', '.')
+            "$value ГБ"
+        }
+    }
+}
+
+internal fun formatWaveCacheInputGb(limitMb: Int): String = when {
+    limitMb <= 0 -> ""
+    limitMb % 1024 == 0 -> (limitMb / 1024).toString()
+    else -> {
+        val ru = Locale.forLanguageTag("ru")
+        val twoDecimals = String.format(ru, "%.2f", limitMb / 1024.0).trimEnd('0').trimEnd(',', '.')
+        if (twoDecimals == "0" || twoDecimals.isEmpty()) {
+            String.format(ru, "%.3f", limitMb / 1024.0).trimEnd('0').trimEnd(',', '.')
+        } else {
+            twoDecimals
+        }
+    }
+}
+
+@Composable
+private fun WaveCacheLimitDialog(
+    currentLimitMb: Int,
+    onConfirm: (Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val initialText = remember(currentLimitMb) { formatWaveCacheInputGb(currentLimitMb) }
+    var input by remember(currentLimitMb) {
+        mutableStateOf(TextFieldValue(initialText, TextRange(0, initialText.length)))
+    }
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focus.requestFocus() }
+    val parsedMb = parseWaveCacheLimitGbToMb(input.text)
+    val isError = input.text.isNotBlank() && parsedMb == null
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Color(0xFF1A1C24),
+        title = { Text(stringResource(R.string.settings_wave_cache_custom_title), color = Color.White, fontWeight = FontWeight.Bold) },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = input,
+                    onValueChange = { if (it.text.length <= 10) input = it },
+                    singleLine = true,
+                    isError = isError,
+                    placeholder = { Text(stringResource(R.string.settings_wave_cache_custom_placeholder)) },
+                    suffix = { Text(stringResource(R.string.settings_wave_cache_unit_gb), color = HiFi.TextSecondary) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { parsedMb?.let(onConfirm) }),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        errorTextColor = Color.White,
+                        focusedBorderColor = HiFi.Accent,
+                        unfocusedBorderColor = Color.White.copy(alpha = 0.28f),
+                        errorBorderColor = HiFi.Danger,
+                        cursorColor = HiFi.Accent
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focus)
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.settings_wave_cache_custom_hint),
+                    color = if (isError) HiFi.Danger else HiFi.TextTertiary,
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { parsedMb?.let(onConfirm) },
+                enabled = parsedMb != null
+            ) {
+                Text(
+                    stringResource(R.string.playlist_save),
+                    color = if (parsedMb != null) HiFi.Accent else Color.White.copy(alpha = 0.35f),
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.settings_cancel), color = Color.White)
+            }
+        }
+    )
 }
 
 private fun formatSize(bytes: Long): String {
@@ -538,12 +685,29 @@ private fun CrossfadeRow(seconds: Int, onChange: (Int) -> Unit) {
 }
 
 @Composable
-private fun SegmentedRow(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, control: @Composable () -> Unit) {
+private fun SegmentedRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    value: String? = null,
+    onValueClick: (() -> Unit)? = null,
+    control: @Composable () -> Unit
+) {
     Column(Modifier.fillMaxWidth().padding(14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconPlaque(icon, size = 32.dp)
             Spacer(Modifier.width(12.dp))
-            Text(title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+            Text(title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+            if (value != null) {
+                Spacer(Modifier.width(8.dp))
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .then(if (onValueClick != null) Modifier.clickable(role = Role.Button, onClick = onValueClick) else Modifier)
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Text(value, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                }
+            }
         }
         Spacer(Modifier.height(12.dp))
         control()

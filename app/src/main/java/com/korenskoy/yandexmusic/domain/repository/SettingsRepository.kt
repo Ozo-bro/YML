@@ -43,8 +43,10 @@ interface SettingsRepository {
     companion object {
         const val DEFAULT_CROSSFADE_SECONDS = 3
         /** Offline wave choices (MB) and the default (1 GB). */
-        val WAVE_CACHE_LIMITS_MB = listOf(0, 512, 1024, 2048, 4096)
+        val WAVE_CACHE_LIMITS_MB = listOf(0, 1024, 2048, 4096, 8192)
         const val DEFAULT_WAVE_CACHE_LIMIT_MB = 1024
+        const val MAX_WAVE_CACHE_LIMIT_GB = 128
+        const val MAX_WAVE_CACHE_LIMIT_MB = MAX_WAVE_CACHE_LIMIT_GB * 1024
         const val MAX_CROSSFADE_SECONDS = 12
         /** Left-hand drive is the global majority, so it is the default. */
         const val DEFAULT_STEERING_WHEEL_ON_LEFT = true

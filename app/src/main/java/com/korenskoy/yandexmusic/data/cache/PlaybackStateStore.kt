@@ -17,7 +17,8 @@ data class PlaybackSnapshot(
     val source: String,
     val queue: List<TrackDetailsDto>,
     val currentTrackId: String,
-    val positionMs: Long
+    val positionMs: Long,
+    val returnToWaveWhenOnline: Boolean = false
 )
 
 @Singleton

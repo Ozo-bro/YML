@@ -5,7 +5,7 @@ enum class PlaylistSource {
     LIBRARY, VIBE, SEARCH, TRENDS, NONE,
     /** One of the user's own playlists. New values go last: the name is persisted in the session file. */
     PLAYLIST,
-    /** No connection: the downloaded tracks (liked + offline wave); back to My Wave once online. */
+    /** Downloaded tracks (user-selected "Скачанные", or offline fallback from My Wave). */
     OFFLINE
 }
 
@@ -78,6 +78,10 @@ object PlaybackQueue {
     /** Same tracks in the same order: picking a track inside the playing queue, not starting a new one. */
     fun <T, K> isSameQueue(a: List<T>, b: List<T>, key: (T) -> K): Boolean =
         a === b || (a.size == b.size && a.indices.all { key(a[it]) == key(b[it]) })
+
+    /** Return to My Wave on "next" only when [PlaylistSource.OFFLINE] was entered as a fallback from My Wave. */
+    fun shouldReturnToWaveOnNext(source: PlaylistSource, returnToWaveWhenOnline: Boolean, isOffline: Boolean): Boolean =
+        source == PlaylistSource.OFFLINE && returnToWaveWhenOnline && !isOffline
 
     fun <T> snapshotWindow(queue: List<T>, currentIndex: Int): List<T> {
         if (currentIndex < 0) return queue.take(SNAPSHOT_AFTER)

@@ -43,7 +43,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -119,10 +118,8 @@ fun LibraryScreen(
     waveCacheLimitMb: Int = 0,
     waveCacheUsedBytes: Long = 0L,
     onWaveCacheLimitChange: (Int) -> Unit = {},
-    /** Open the settings once (the car screen's button), then report it with [onSettingsRequestHandled]. */
-    openSettingsRequest: Boolean = false,
-    onSettingsRequestHandled: () -> Unit = {},
-    onSettingsClosed: () -> Unit = {},
+    onOpenSettings: (() -> Unit)? = null,
+    onOpenDownloadProgress: (() -> Unit)? = null,
     openCarModeOnStart: Boolean = true,
     onOpenCarModeOnStartChange: (Boolean) -> Unit = {},
     steeringWheelOnLeft: Boolean = true,
@@ -212,12 +209,18 @@ fun LibraryScreen(
                     Row(Modifier.fillMaxWidth().padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                         HiFiLargeTitle(stringResource(R.string.library_title), modifier = Modifier.weight(1f))
                         if (downloadState == DownloadQueueState.RUNNING) {
-                            GlassCircleButton(onClick = { showProgressModal = true }, contentDescription = stringResource(R.string.download_progress_modal_zagruzka_kollektsii)) {
+                            GlassCircleButton(
+                                onClick = { if (onOpenDownloadProgress != null) onOpenDownloadProgress() else showProgressModal = true },
+                                contentDescription = stringResource(R.string.download_progress_modal_zagruzka_kollektsii)
+                            ) {
                                 CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
                             }
                             Spacer(Modifier.width(10.dp))
                         }
-                        GlassCircleButton(onClick = { showSettings = true }, contentDescription = stringResource(R.string.library_settings)) {
+                        GlassCircleButton(
+                            onClick = { if (onOpenSettings != null) onOpenSettings() else showSettings = true },
+                            contentDescription = stringResource(R.string.library_settings)
+                        ) {
                             Icon(Icons.Rounded.Tune, contentDescription = null, tint = Color.White, modifier = Modifier.size(26.dp))
                         }
                     }
@@ -309,18 +312,10 @@ fun LibraryScreen(
         }
     }
 
-    LaunchedEffect(openSettingsRequest) {
-        if (openSettingsRequest) {
-            showSettings = true
-            onSettingsRequestHandled()
-        }
-    }
-    if (showSettings) {
+    // Standalone previews/tests without hoisted modal handlers keep local fallback sheets.
+    if (onOpenSettings == null && showSettings) {
         CacheMenuBottomSheet(
-            onDismiss = {
-                showSettings = false
-                onSettingsClosed()
-            },
+            onDismiss = { showSettings = false },
             cacheSizeBytes = cacheSizeBytes,
             autoDownloadEnabled = autoDownloadEnabled,
             onEnableAutoDownload = onEnableAutoDownload,
@@ -357,7 +352,7 @@ fun LibraryScreen(
         )
     }
 
-    if (showProgressModal && downloadState != DownloadQueueState.IDLE) {
+    if (onOpenDownloadProgress == null && showProgressModal && downloadState != DownloadQueueState.IDLE) {
         DownloadProgressModal(
             state = downloadState,
             progressInfo = downloadProgress,

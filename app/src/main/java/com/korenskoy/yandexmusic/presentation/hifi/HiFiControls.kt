@@ -233,6 +233,8 @@ fun IconPlaque(icon: ImageVector, modifier: Modifier = Modifier, size: Dp = 34.d
 /** Segmented control: a dark track with a raised piece sliding under the selected option (as the car tabs). */
 @Composable
 fun HiFiSegmented(options: List<String>, selectedIndex: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
+    if (options.isEmpty()) return
+    val safeSelected = selectedIndex.coerceIn(0, options.lastIndex)
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
@@ -242,7 +244,7 @@ fun HiFiSegmented(options: List<String>, selectedIndex: Int, onSelect: (Int) -> 
             .padding(4.dp)
     ) {
         val segment = maxWidth / options.size
-        val offset by animateDpAsState(segment * selectedIndex, HiFiMotion.spring(), label = "segment")
+        val offset by animateDpAsState(segment * safeSelected, HiFiMotion.spring(), label = "segment")
         Box(
             modifier = Modifier
                 .offset { IntOffset(offset.roundToPx(), 0) }
@@ -253,7 +255,7 @@ fun HiFiSegmented(options: List<String>, selectedIndex: Int, onSelect: (Int) -> 
         )
         Row(Modifier.fillMaxWidth().fillMaxHeight()) {
             options.forEachIndexed { index, label ->
-                val selected = index == selectedIndex
+                val selected = index == safeSelected
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -265,9 +267,11 @@ fun HiFiSegmented(options: List<String>, selectedIndex: Int, onSelect: (Int) -> 
                     Text(
                         label,
                         color = if (selected) Color.White else Color.White.copy(alpha = 0.70f),
-                        fontSize = 15.sp,
+                        fontSize = if (options.size > 5) 13.5.sp else 15.sp,
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
-                        maxLines = 1
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }

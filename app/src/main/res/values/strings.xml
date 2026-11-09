@@ -229,6 +229,11 @@
     <string name="settings_wave_cache_hint">Пока играет Моя волна, следующие треки сохраняются сами. Без интернета играют они и скачанные «Мне нравится»</string>
     <string name="settings_wave_cache_off">Выкл</string>
     <string name="settings_wave_cache_used">Сейчас занято: %1$s</string>
+    <string name="settings_wave_cache_custom">Своё</string>
+    <string name="settings_wave_cache_custom_title">Лимит офлайн-волны</string>
+    <string name="settings_wave_cache_custom_placeholder">Например, 8</string>
+    <string name="settings_wave_cache_custom_hint">Введите размер в ГБ (от 0 до 128, можно дробное, например 1,5)</string>
+    <string name="settings_wave_cache_unit_gb">ГБ</string>
     <string name="car_source_downloaded">Скачанные</string>
     <string name="car_exit">Выйти из режима В авто</string>
     <string name="settings_title">Настройки</string>

@@ -33,7 +33,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalConfiguration
+import com.korenskoy.yandexmusic.data.download.DownloadQueueState
 import com.korenskoy.yandexmusic.presentation.car.CarScreen
+import com.korenskoy.yandexmusic.presentation.main.components.CacheMenuBottomSheet
+import com.korenskoy.yandexmusic.presentation.main.components.DownloadProgressModal
 import com.korenskoy.yandexmusic.presentation.main.components.FloatingGlassNavigationRail
 import com.korenskoy.yandexmusic.presentation.main.components.FloatingGlassBottomBar
 import com.korenskoy.yandexmusic.presentation.main.components.MainTab
@@ -139,16 +142,8 @@ fun MainScreen(
 
     var currentTab by rememberSaveable { mutableStateOf(MainTab.HOME) }
     val openCarModeOnStart by viewModel.openCarModeOnStart.collectAsState()
-    // The car screen's settings button: open the settings sheet, come back to the car screen after
-    var openSettingsRequest by remember { mutableStateOf(false) }
-    // Where the settings were opened from (car screen, wave page): back there once they close
-    var settingsReturnTab by remember { mutableStateOf<MainTab?>(null) }
-    val openSettingsFrom: (MainTab) -> Unit = { from ->
-        settingsReturnTab = from
-        openSettingsRequest = true
-        playlistsVm.close() // the library's own page, not an opened playlist
-        currentTab = MainTab.LIBRARY
-    }
+    var showSettings by rememberSaveable { mutableStateOf(false) }
+    var showProgressModal by rememberSaveable { mutableStateOf(false) }
     // App start: straight into the car screen with the music on (a setting, on by default)
     LaunchedEffect(Unit) {
         if (viewModel.takeCarLaunch()) {
@@ -280,7 +275,7 @@ fun MainScreen(
                         onOpenQueue = { isPlayerExpanded = true },
                         onUpNextClick = { viewModel.playTrack(it.idString, currentPlaylist, PlaylistSource.VIBE) },
                         contentBottom = if (waveActive && !isLandscape) 100.dp else contentBottom,
-                        onOpenSettings = { openSettingsFrom(MainTab.HOME) }
+                        onOpenSettings = { showSettings = true }
                     )
                     MainTab.SEARCH -> SearchScreen(
                         query = searchQuery,
@@ -335,42 +330,13 @@ fun MainScreen(
                         onEnableAutoDownload = { enabled ->
                             if (enabled) viewModel.enableAutoDownloadAndStart() else viewModel.setAutoDownloadLikedTracks(false)
                         },
-                        crossfadeSeconds = crossfadeSeconds,
-                        onCrossfadeChange = { viewModel.setCrossfadeSeconds(it) },
-                        waveCacheLimitMb = waveCacheLimitMb,
-                        waveCacheUsedBytes = waveCacheUsedBytes,
-                        onWaveCacheLimitChange = { viewModel.setWaveCacheLimitMb(it) },
-                        openSettingsRequest = openSettingsRequest,
-                        onSettingsRequestHandled = { openSettingsRequest = false },
-                        onSettingsClosed = {
-                            settingsReturnTab?.let { currentTab = it }
-                            settingsReturnTab = null
-                        },
-                        openCarModeOnStart = openCarModeOnStart,
-                        onOpenCarModeOnStartChange = { viewModel.setOpenCarModeOnStart(it) },
-                        steeringWheelOnLeft = steeringWheelOnLeft,
-                        onSteeringWheelChange = { viewModel.setSteeringWheelOnLeft(it) },
-                        uiScaleAuto = uiScaleAuto,
-                        onUiScaleAutoChange = { viewModel.setUiScaleAuto(it) },
-                        uiScaleManual = uiScaleManual,
-                        onUiScaleManualChange = { viewModel.setUiScaleManual(it) },
-                        onUpgradeDownloads = { viewModel.upgradeDownloadedQuality() },
-                        crashReports = crashReports.size,
-                        onOpenCrashLog = { showCrashLog = true },
+                        onOpenSettings = { showSettings = true },
+                        onOpenDownloadProgress = { showProgressModal = true },
                         onCancelDownload = { viewModel.cancelDownloadAll() },
                         onClearCache = { viewModel.clearMusicCache() },
                         onToggleLike = { track -> viewModel.toggleLike(track) },
                         onRefresh = { viewModel.loadLikedTracks() },
                         hasActiveTrack = currentTrack != null,
-                        accountName = accountName,
-                        avatarUrl = accountAvatarUrl,
-                        hasPlus = activeAccount?.hasPlus == true,
-                        defaultAccountName = defaultAccountName,
-                        updateStatus = updateStatusMessage,
-                        onCheckForUpdates = { updateVm.checkForUpdates(silent = false) },
-                        onAccountManagementClick = { showAccountDialog = true },
-                        onAddAccount = { onNavigateToAuth() },
-                        onLogout = { accountVm.logoutCurrentAccount() },
                         playlists = allPlaylists,
                         openedPlaylist = openedPlaylist,
                         onOpenPlaylist = { playlistsVm.open(it) },
@@ -427,7 +393,7 @@ fun MainScreen(
                             onQueueTrackClick = { viewModel.playTrack(it, currentPlaylist) },
                             onEnter = { viewModel.startIfIdle(resumeRestored = false) },
                             offline = offline,
-                            onOpenSettings = { openSettingsFrom(MainTab.CAR) }
+                            onOpenSettings = { showSettings = true }
                         )
                     }
                 }
@@ -577,6 +543,59 @@ fun MainScreen(
                     .navigationBarsPadding()
                     .padding(bottom = if (shownTrack != null) 160.dp else 90.dp)
             )
+
+            if (showSettings) {
+                CacheMenuBottomSheet(
+                    onDismiss = { showSettings = false },
+                    cacheSizeBytes = cacheSizeBytes,
+                    autoDownloadEnabled = autoDownloadEnabled,
+                    onEnableAutoDownload = { enabled ->
+                        if (enabled) viewModel.enableAutoDownloadAndStart() else viewModel.setAutoDownloadLikedTracks(false)
+                    },
+                    crossfadeSeconds = crossfadeSeconds,
+                    onCrossfadeChange = { viewModel.setCrossfadeSeconds(it) },
+                    waveCacheLimitMb = waveCacheLimitMb,
+                    waveCacheUsedBytes = waveCacheUsedBytes,
+                    onWaveCacheLimitChange = { viewModel.setWaveCacheLimitMb(it) },
+                    openCarModeOnStart = openCarModeOnStart,
+                    onOpenCarModeOnStartChange = { viewModel.setOpenCarModeOnStart(it) },
+                    steeringWheelOnLeft = steeringWheelOnLeft,
+                    onSteeringWheelChange = { viewModel.setSteeringWheelOnLeft(it) },
+                    uiScaleAuto = uiScaleAuto,
+                    onUiScaleAutoChange = { viewModel.setUiScaleAuto(it) },
+                    uiScaleManual = uiScaleManual,
+                    onUiScaleManualChange = { viewModel.setUiScaleManual(it) },
+                    onUpgradeDownloads = { viewModel.upgradeDownloadedQuality() },
+                    crashReports = crashReports.size,
+                    onOpenCrashLog = { showCrashLog = true },
+                    onDownloadAllClick = {
+                        viewModel.downloadAllLikedTracks()
+                        showProgressModal = true
+                    },
+                    onClearCache = { viewModel.clearMusicCache() },
+                    accountName = accountName,
+                    avatarUrl = accountAvatarUrl,
+                    hasPlus = activeAccount?.hasPlus == true,
+                    defaultAccountName = defaultAccountName,
+                    updateStatus = updateStatusMessage,
+                    onCheckForUpdates = { updateVm.checkForUpdates(silent = false) },
+                    onAccountManagementClick = { showAccountDialog = true },
+                    onAddAccount = { onNavigateToAuth() },
+                    onLogout = { accountVm.logoutCurrentAccount() }
+                )
+            }
+
+            if (showProgressModal && downloadState != DownloadQueueState.IDLE) {
+                DownloadProgressModal(
+                    state = downloadState,
+                    progressInfo = downloadProgress,
+                    onDismiss = { showProgressModal = false },
+                    onCancel = {
+                        viewModel.cancelDownloadAll()
+                        showProgressModal = false
+                    }
+                )
+            }
 
             if (showCrashLog) {
                 com.korenskoy.yandexmusic.presentation.crash.CrashLogDialog(

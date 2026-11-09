@@ -136,6 +136,11 @@ class PlaybackController @Inject constructor(
     private val pendingFetchCallbacks = mutableListOf<(Boolean) -> Unit>()
     /** Completes once the saved session (if any) has been loaded from disk. */
     private val sessionRestored = kotlinx.coroutines.CompletableDeferred<Unit>()
+    /**
+     * True only when [PlaylistSource.OFFLINE] was entered automatically because My Wave lost internet.
+     * Explicit "Скачанные" playback keeps this false so pressing Next does not jump to My Wave.
+     */
+    private var returnToWaveWhenOnline = false
 
     private val activeUserFolder: String
         get() = authRepository.getActiveAccount()?.folderName ?: "default"
@@ -228,6 +233,15 @@ class PlaybackController @Inject constructor(
         source: PlaylistSource? = null,
         crossfade: Boolean = true,
         startPositionMs: Long = 0L
+    ) = playTrackInternal(trackId, playlist, source, crossfade, startPositionMs, returnToWave = false)
+
+    private fun playTrackInternal(
+        trackId: String,
+        playlist: List<TrackDetailsDto>,
+        source: PlaylistSource? = null,
+        crossfade: Boolean = true,
+        startPositionMs: Long = 0L,
+        returnToWave: Boolean = false
     ) {
         val track = playlist.find { it.idString == trackId } ?: return
         val requested = playlist
@@ -247,7 +261,10 @@ class PlaybackController @Inject constructor(
             }
         }
         startRequestId++
-        source?.let { _currentSource.value = it }
+        source?.let {
+            _currentSource.value = it
+            returnToWaveWhenOnline = returnToWave && it == PlaylistSource.OFFLINE
+        }
         _currentPlaylist.value = playlist
         _currentTrack.value = track
         restoredPositionMs.value = startPositionMs
@@ -277,7 +294,7 @@ class PlaybackController @Inject constructor(
 
     fun playMyVibe() {
         if (isOffline()) {
-            playOfflineMix()
+            playOfflineMix(returnToWave = true)
             return
         }
         _currentSource.value = PlaylistSource.VIBE
@@ -299,7 +316,7 @@ class PlaybackController @Inject constructor(
                 playTrack(list.first().idString, list, PlaylistSource.VIBE)
             } else {
                 _isStarting.value = false
-                if (isOffline()) playOfflineMix() else showMessage(context.getString(R.string.msg_wave_load_failed))
+                if (isOffline()) playOfflineMix(returnToWave = true) else showMessage(context.getString(R.string.msg_wave_load_failed))
             }
         }
     }
@@ -413,8 +430,8 @@ class PlaybackController @Inject constructor(
             return
         }
 
-        // Back online after the offline mix: the wave again, from the next track
-        if (_currentSource.value == PlaylistSource.OFFLINE && !isOffline()) {
+        // Back online after the offline fallback from My Wave: the wave again, from the next track
+        if (PlaybackQueue.shouldReturnToWaveOnNext(_currentSource.value, returnToWaveWhenOnline, isOffline())) {
             showMessage(context.getString(R.string.msg_back_online_wave))
             playMyVibe()
             return
@@ -509,6 +526,7 @@ class PlaybackController @Inject constructor(
         _currentPlaylist.value = emptyList()
         unshuffledQueue = null
         _currentSource.value = PlaylistSource.NONE
+        returnToWaveWhenOnline = false
         restoredPositionMs.value = 0L
         scope.launch { stateStore.clear() }
     }
@@ -782,8 +800,8 @@ class PlaybackController @Inject constructor(
             .distinctBy { it.idString }
             .filter { downloadManager.isKnownDownloaded(it.idString) }
 
-    /** No network: play everything downloaded, shuffled; the wave comes back once online. */
-    private fun playOfflineMix(announce: Boolean = true) {
+    /** Play everything downloaded, shuffled; returns to My Wave online only when [returnToWave] is true. */
+    private fun playOfflineMix(announce: Boolean = true, returnToWave: Boolean = false) {
         val offline = downloadedLibrary().shuffled()
         if (offline.isEmpty()) {
             _isStarting.value = false
@@ -791,18 +809,22 @@ class PlaybackController @Inject constructor(
             return
         }
         if (announce) showMessage(context.getString(R.string.msg_offline_playing_downloaded))
-        playTrack(offline.first().idString, offline, PlaylistSource.OFFLINE)
+        playTrackInternal(offline.first().idString, offline, PlaylistSource.OFFLINE, returnToWave = returnToWave)
     }
 
     /** "Скачанные" in the car: everything downloaded, online or not. */
-    fun playDownloaded() = playOfflineMix(announce = isOffline())
+    fun playDownloaded() = playOfflineMix(announce = isOffline(), returnToWave = false)
 
     /** Next downloaded track after [from] in the current queue, otherwise the offline mix. */
     private fun skipToNextDownloaded(from: TrackDetailsDto) {
         val queue = _currentPlaylist.value
         val start = queue.indexOfFirst { it.idString == from.idString }
         val next = PlaybackQueue.nextMatching(queue, start) { downloadManager.isKnownDownloaded(it.idString) }
-        if (next != null) playTrack(queue[next].idString, queue) else playOfflineMix()
+        if (next != null) {
+            playTrack(queue[next].idString, queue)
+        } else {
+            playOfflineMix(returnToWave = _currentSource.value == PlaylistSource.VIBE || returnToWaveWhenOnline)
+        }
     }
 
     private fun prepareNextTrackInQueue() {
@@ -914,7 +936,8 @@ class PlaybackController @Inject constructor(
                 source = _currentSource.value.name,
                 queue = PlaybackQueue.snapshotWindow(queue, index).ifEmpty { listOf(current) },
                 currentTrackId = current.idString,
-                positionMs = progress.value
+                positionMs = progress.value,
+                returnToWaveWhenOnline = returnToWaveWhenOnline
             )
         )
     }
@@ -941,6 +964,7 @@ class PlaybackController @Inject constructor(
         val track = queue.firstOrNull { it.idString == snapshot.currentTrackId } ?: return
         // Shown paused, like Apple Music: Play continues from the saved position.
         _currentSource.value = source
+        returnToWaveWhenOnline = source == PlaylistSource.OFFLINE && snapshot.returnToWaveWhenOnline
         _currentPlaylist.value = if (source == PlaylistSource.VIBE && wavePlaylist.value.isNotEmpty()) {
             (queue + wavePlaylist.value).distinctBy { it.idString }
         } else {

@@ -64,11 +64,14 @@ class SettingsRepositoryImpl @Inject constructor(
 
     private val WAVE_CACHE_LIMIT_KEY = androidx.datastore.preferences.core.intPreferencesKey("wave_cache_limit_mb")
     override val waveCacheLimitMb: Flow<Int> = context.dataStore.data.map { prefs ->
-        prefs[WAVE_CACHE_LIMIT_KEY] ?: SettingsRepository.DEFAULT_WAVE_CACHE_LIMIT_MB
+        (prefs[WAVE_CACHE_LIMIT_KEY] ?: SettingsRepository.DEFAULT_WAVE_CACHE_LIMIT_MB)
+            .coerceIn(0, SettingsRepository.MAX_WAVE_CACHE_LIMIT_MB)
     }
 
     override suspend fun setWaveCacheLimitMb(limitMb: Int) {
-        context.dataStore.edit { prefs -> prefs[WAVE_CACHE_LIMIT_KEY] = limitMb }
+        context.dataStore.edit { prefs ->
+            prefs[WAVE_CACHE_LIMIT_KEY] = limitMb.coerceIn(0, SettingsRepository.MAX_WAVE_CACHE_LIMIT_MB)
+        }
     }
 
     private val OPEN_CAR_ON_START_KEY = booleanPreferencesKey("open_car_mode_on_start")

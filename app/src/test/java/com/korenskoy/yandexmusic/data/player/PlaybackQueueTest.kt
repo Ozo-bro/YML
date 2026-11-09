@@ -1,7 +1,11 @@
 package com.korenskoy.yandexmusic.data.player
 
+import com.korenskoy.yandexmusic.data.cache.PlaybackSnapshot
+import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PlaybackQueueTest {
@@ -94,5 +98,31 @@ class PlaybackQueueTest {
         assertEquals(true, PlaybackQueue.shuffleApplies(PlaylistSource.OFFLINE))
         assertEquals(true, PlaybackQueue.shuffleApplies(PlaylistSource.PLAYLIST))
         assertEquals(true, PlaybackQueue.shuffleApplies(PlaylistSource.LIBRARY))
+    }
+
+    @Test
+    fun manualOfflineTracksStayOfflineWhenOnline() {
+        assertFalse(PlaybackQueue.shouldReturnToWaveOnNext(PlaylistSource.OFFLINE, returnToWaveWhenOnline = false, isOffline = false))
+        assertFalse(PlaybackQueue.shouldReturnToWaveOnNext(PlaylistSource.OFFLINE, returnToWaveWhenOnline = false, isOffline = true))
+        assertFalse(PlaybackQueue.shouldReturnToWaveOnNext(PlaylistSource.LIBRARY, returnToWaveWhenOnline = true, isOffline = false))
+        assertFalse(PlaybackQueue.shouldReturnToWaveOnNext(PlaylistSource.VIBE, returnToWaveWhenOnline = true, isOffline = false))
+    }
+
+    @Test
+    fun offlineFallbackFromWaveReturnsWhenOnline() {
+        assertTrue(PlaybackQueue.shouldReturnToWaveOnNext(PlaylistSource.OFFLINE, returnToWaveWhenOnline = true, isOffline = false))
+        assertFalse(PlaybackQueue.shouldReturnToWaveOnNext(PlaylistSource.OFFLINE, returnToWaveWhenOnline = true, isOffline = true))
+    }
+
+    @Test
+    fun playbackSnapshotDefaultsReturnToWaveWhenMissing() {
+        val json = Json { ignoreUnknownKeys = true; coerceInputValues = true; isLenient = true }
+        val legacyJson = """{"userFolder":"u1","source":"OFFLINE","queue":[],"currentTrackId":"1","positionMs":500}"""
+        val restoredLegacy = json.decodeFromString(PlaybackSnapshot.serializer(), legacyJson)
+        assertFalse(restoredLegacy.returnToWaveWhenOnline)
+
+        val fallbackJson = """{"userFolder":"u1","source":"OFFLINE","queue":[],"currentTrackId":"1","positionMs":500,"returnToWaveWhenOnline":true}"""
+        val restoredFallback = json.decodeFromString(PlaybackSnapshot.serializer(), fallbackJson)
+        assertTrue(restoredFallback.returnToWaveWhenOnline)
     }
 }
