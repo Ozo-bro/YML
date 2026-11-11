@@ -175,6 +175,17 @@ data class LyricsInfoDto(
     @SerialName("downloadUrl") val downloadUrl: String? = null
 )
 
+@Serializable
+data class TrackSupplementDto(
+    @SerialName("lyrics") val lyrics: SupplementLyricsDto? = null
+)
+
+@Serializable
+data class SupplementLyricsDto(
+    @SerialName("fullLyrics") val fullLyrics: String? = null,
+    @SerialName("hasRights") val hasRights: Boolean? = null
+)
+
 /** An entry of users/{uid}/likes/playlists. */
 @Serializable
 data class LikedPlaylistDto(

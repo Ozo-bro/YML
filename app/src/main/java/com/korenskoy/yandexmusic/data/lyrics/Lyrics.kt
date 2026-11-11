@@ -18,7 +18,7 @@ object LyricsParser {
     /** "[01:23.45]text" lines, several tags per line allowed; metadata tags ([ar:...]) are skipped. */
     fun parseLrc(lrc: String): List<LyricLine> {
         val result = ArrayList<LyricLine>()
-        for (raw in lrc.lineSequence()) {
+        for (raw in lrc.removePrefix("\uFEFF").lineSequence()) {
             var rest = raw.trim()
             val times = ArrayList<Long>()
             while (true) {

@@ -64,6 +64,11 @@ interface YandexMusicApi {
         @retrofit2.http.Query("sign") sign: String
     ): ResponseWrapper<com.korenskoy.yandexmusic.data.dto.LyricsInfoDto>
 
+    @GET("tracks/{trackId}/supplement")
+    suspend fun getTrackSupplement(
+        @Path("trackId") trackId: String
+    ): ResponseWrapper<com.korenskoy.yandexmusic.data.dto.TrackSupplementDto>
+
     @GET("users/{userId}/likes/playlists")
     suspend fun getLikedPlaylists(
         @Path("userId") userId: String

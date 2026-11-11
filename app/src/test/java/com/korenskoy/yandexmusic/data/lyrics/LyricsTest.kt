@@ -23,6 +23,11 @@ class LyricsTest {
     }
 
     @Test
+    fun parsesFirstLineAfterUtf8Bom() {
+        assertEquals(listOf(LyricLine(1_250, "line")), LyricsParser.parseLrc("\uFEFF[00:01.25]line"))
+    }
+
+    @Test
     fun currentLineFollowsThePosition() {
         val lines = listOf(LyricLine(1_000, "a"), LyricLine(5_000, "b"), LyricLine(9_000, "c"))
         assertEquals(-1, LyricsParser.currentIndex(lines, 500))
