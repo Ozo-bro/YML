@@ -38,6 +38,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -122,6 +123,7 @@ fun SearchScreen(
     onRemoveFromHistory: (String) -> Unit = {},
     onClearHistory: () -> Unit = {},
     onSubmit: () -> Unit = {},
+    onVoice: (() -> Unit)? = null,
     initiallyShowHistory: Boolean = false
 ) {
     val isLandscape = androidx.compose.ui.platform.LocalConfiguration.current.orientation ==
@@ -151,6 +153,7 @@ fun SearchScreen(
                         onSubmit()
                         focusManager.clearFocus()
                     },
+                    onVoice = onVoice,
                     modifier = Modifier.weight(1f)
                 )
                 if (query.isNotEmpty()) {
@@ -240,7 +243,7 @@ fun SearchScreen(
 }
 
 @Composable
-private fun SearchField(query: String, onQueryChange: (String) -> Unit, onSubmit: () -> Unit, modifier: Modifier = Modifier) {
+private fun SearchField(query: String, onQueryChange: (String) -> Unit, onSubmit: () -> Unit, onVoice: (() -> Unit)? = null, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
             .height(52.dp)
@@ -274,6 +277,16 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit, onSubmit
                 contentAlignment = Alignment.Center
             ) {
                 Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_ochistit), tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(18.dp))
+            }
+        } else if (onVoice != null) {
+            Box(
+                Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .clickable(role = Role.Button, onClick = onVoice),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.Mic, contentDescription = stringResource(R.string.voice_search), tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size(21.dp))
             }
         }
     }

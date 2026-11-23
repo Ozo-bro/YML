@@ -237,6 +237,7 @@ class MainViewModel @Inject constructor(
     fun toggleShuffle() = playbackController.toggleShuffle()
     fun toggleRepeatOne() = playbackController.toggleRepeatOne()
     fun playDownloaded() = playbackController.playDownloaded()
+    fun playByVoice(phrase: String) = playbackController.playByVoice(phrase)
 
     fun playHits(shuffle: Boolean = true) = playbackController.playHits(libraryRepository.weeklyHits.value, shuffle)
 

@@ -40,6 +40,7 @@ import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.RepeatOne
+import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.SkipNext
@@ -193,6 +194,7 @@ fun CarScreen(
     /** Entering the screen with nothing playing; by default starts the wave right away. */
     onEnter: (() -> Unit)? = null,
     onOpenSettings: (() -> Unit)? = null,
+    onVoiceSearch: (() -> Unit)? = null,
     /** No internet: a badge in the top line (the music then comes from the downloads). */
     offline: Boolean = false
 ) {
@@ -290,7 +292,7 @@ fun CarScreen(
             androidx.compose.material3.LocalTextStyle provides androidx.compose.material3.LocalTextStyle.current.copy(lineHeight = TextUnit.Unspecified)
         ) {
             Column(Modifier.fillMaxSize().systemBarsPadding()) {
-                CarHeader(u, sourceLabel, currentTrack, onExit, onOpenSettings, offline)
+                CarHeader(u, sourceLabel, currentTrack, onExit, onOpenSettings, onVoiceSearch, offline)
                 if (isLandscape) {
                     Row(
                         Modifier.fillMaxSize().padding(start = u(40f), end = u(40f), bottom = u(28f)),
@@ -330,7 +332,7 @@ private data class SourceItem(val source: CarSource, val icon: ImageVector, val 
 
 /** Top line: back, what plays (source · title · artist), the clock. */
 @Composable
-private fun CarHeader(u: Scale, sourceLabel: String, track: TrackDetailsDto?, onExit: () -> Unit, onOpenSettings: (() -> Unit)?, offline: Boolean) {
+private fun CarHeader(u: Scale, sourceLabel: String, track: TrackDetailsDto?, onExit: () -> Unit, onOpenSettings: (() -> Unit)?, onVoiceSearch: (() -> Unit)?, offline: Boolean) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -385,8 +387,14 @@ private fun CarHeader(u: Scale, sourceLabel: String, track: TrackDetailsDto?, on
         }
         Spacer(Modifier.width(u(20f)))
         CarClock(u)
+        if (onVoiceSearch != null) {
+            Spacer(Modifier.width(u(16f)))
+            FlatRound(u(64f), stringResource(R.string.voice_search), onClick = onVoiceSearch) {
+                Icon(Icons.Rounded.Mic, contentDescription = null, tint = Color.White, modifier = Modifier.size(u(30f)))
+            }
+        }
         if (onOpenSettings != null) {
-            Spacer(Modifier.width(u(20f)))
+            Spacer(Modifier.width(u(16f)))
             FlatRound(u(64f), stringResource(R.string.library_settings), onClick = onOpenSettings) {
                 Icon(Icons.Rounded.Settings, contentDescription = null, tint = Color.White, modifier = Modifier.size(u(32f)))
             }

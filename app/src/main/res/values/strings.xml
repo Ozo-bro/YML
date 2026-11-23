@@ -270,4 +270,9 @@
     <string name="settings_cancel">Отмена</string>
     <string name="settings_skip_ai">Пропускать музыку, созданную ИИ</string>
     <string name="settings_skip_ai_hint">Треки, которые Яндекс отметил как созданные с использованием ИИ, νе включаются сами</string>
+    <string name="voice_search">Голосовой поиск</string>
+    <string name="voice_prompt">Назовите песню или исполнителя</string>
+    <string name="voice_playing">«%1$s» — играет %2$s</string>
+    <string name="voice_nothing">По запросу «%1$s» ничего не найдено</string>
+    <string name="voice_failed">Не удалось выполнить голосовой поиск</string>
 </resources>

@@ -362,6 +362,32 @@ class PlaybackController @Inject constructor(
         if (playlist.isNotEmpty()) playTrack(playlist.first().idString, playlist, PlaylistSource.LIBRARY)
     }
 
+    /** Car voice search: searches Yandex Music and starts playing the best match right away. */
+    fun playByVoice(phrase: String) {
+        val query = phrase.trim()
+        if (query.isEmpty()) return
+        scope.launch {
+            val tracks = try {
+                withContext(Dispatchers.IO) {
+                    api.search(query).result?.tracks?.results.orEmpty().distinctBy { it.idString }
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(TAG, "Voice search failed", e)
+                showMessage(context.getString(R.string.voice_failed))
+                return@launch
+            }
+            val first = tracks.firstOrNull()
+            if (first == null) {
+                showMessage(context.getString(R.string.voice_nothing, query))
+                return@launch
+            }
+            playTrack(first.idString, tracks, PlaylistSource.SEARCH)
+            showMessage(context.getString(R.string.voice_playing, query, first.title.orEmpty()))
+        }
+    }
+
     fun playHits(hits: List<TrackDetailsDto>, shuffle: Boolean = true) {
         val hitsList = if (shuffle) hits.shuffled() else hits
         if (hitsList.isEmpty()) return

@@ -1,6 +1,7 @@
 package com.korenskoy.yandexmusic.presentation.main
 
 import androidx.lifecycle.repeatOnLifecycle
+import com.korenskoy.yandexmusic.presentation.voice.rememberVoiceInput
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
@@ -143,6 +144,13 @@ fun MainScreen(
     var currentTab by rememberSaveable { mutableStateOf(MainTab.HOME) }
     val openCarModeOnStart by viewModel.openCarModeOnStart.collectAsState()
     val skipAi by viewModel.skipAi.collectAsState()
+    val searchVoice = rememberVoiceInput { phrase ->
+        searchVm.onQueryChange(phrase)
+        searchVm.rememberQuery()
+    }
+    val carVoice = rememberVoiceInput { phrase ->
+        viewModel.playByVoice(phrase)
+    }
     var showSettings by rememberSaveable { mutableStateOf(false) }
     var showProgressModal by rememberSaveable { mutableStateOf(false) }
     // App start: straight into the car screen with the music on (a setting, on by default)
@@ -309,7 +317,8 @@ fun MainScreen(
                         },
                         onRemoveFromHistory = { searchVm.removeFromHistory(it) },
                         onClearHistory = { searchVm.clearHistory() },
-                        onSubmit = { searchVm.rememberQuery() }
+                        onSubmit = { searchVm.rememberQuery() },
+                        onVoice = searchVoice
                     )
                     MainTab.LIBRARY -> LibraryScreen(
                         tracks = tracks,
@@ -394,6 +403,7 @@ fun MainScreen(
                             onQueueTrackClick = { viewModel.playTrack(it, currentPlaylist) },
                             onEnter = { viewModel.startIfIdle(resumeRestored = false) },
                             offline = offline,
+                            onVoiceSearch = carVoice,
                             onOpenSettings = { showSettings = true }
                         )
                     }
