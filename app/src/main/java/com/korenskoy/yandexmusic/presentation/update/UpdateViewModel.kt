@@ -60,8 +60,11 @@ class UpdateViewModel @Inject constructor(
         }
     }
 
+    private var downloadJob: kotlinx.coroutines.Job? = null
+
     fun startDownload(apkUrl: String) {
-        viewModelScope.launch {
+        downloadJob?.cancel()
+        downloadJob = viewModelScope.launch {
             _downloadProgress.value = 0f
             _statusMessage.value = null
             _isSignatureMismatch.value = false
@@ -115,6 +118,8 @@ class UpdateViewModel @Inject constructor(
     }
 
     fun dismiss() {
+        downloadJob?.cancel()
+        downloadJob = null
         _checkResult.value = null
         _downloadProgress.value = -1f
         _statusMessage.value = null

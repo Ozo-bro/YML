@@ -247,7 +247,11 @@ class PlayerRepositoryImpl(
     private suspend fun resolvePlayUri(trackId: String, url: String): String? {
         val localFile = withContext(Dispatchers.IO) { downloadManager.getLocalTrackFile(trackId) }
         if (localFile != null) return android.net.Uri.fromFile(localFile).toString()
-        return (preloadManager.getResolvedUrl(trackId) ?: url).takeIf { it.isNotBlank() }
+        if (url.startsWith("file:")) return url
+        (preloadManager.getResolvedUrl(trackId) ?: url).takeIf { it.isNotBlank() }?.let { return it }
+        // No URL was passed because the track was listed as downloaded, but its local file is gone:
+        // fall back to streaming from the network instead of failing.
+        return preloadManager.getOrFetchUrl(trackId)
     }
 
     private fun buildMediaItem(trackId: String, uri: String, title: String?, artist: String?, coverUrl: String?): MediaItem {
@@ -405,8 +409,15 @@ class PlayerRepositoryImpl(
             // Allow AudioTrack one tick at 0f before stopping outgoing to avoid an audible click.
             delay(FADE_TICK_MS)
         } else {
+            // Outgoing already ended while incoming was buffering: fade incoming in gently instead of popping.
             setVolume(outgoing, 0f)
-            setVolume(incoming, 1f)
+            val fadeStart = SystemClock.elapsedRealtime()
+            while (true) {
+                val fraction = ((SystemClock.elapsedRealtime() - fadeStart).toFloat() / LATE_FADE_IN_MS).coerceIn(0f, 1f)
+                setVolume(incoming, fraction)
+                if (fraction >= 1f) break
+                delay(FADE_TICK_MS)
+            }
         }
 
         outgoingPlayer = null
@@ -590,6 +601,7 @@ class PlayerRepositoryImpl(
         const val QUICK_FADE_MS = 150L
         private const val FADE_TICK_MS = 16L
         private const val MIN_CROSSFADE_MS = 150L
+        private const val LATE_FADE_IN_MS = 300L
         private const val PROGRESS_INTERVAL_MS = 100L
         private const val IDLE_INTERVAL_MS = 500L
         private const val EVENT_BUFFER = 16

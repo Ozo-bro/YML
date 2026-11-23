@@ -44,10 +44,12 @@ object PlayerModule {
 
         val encrawDataSourceFactory = com.korenskoy.yandexmusic.data.player.EncrawDataSourceFactory(context)
         val mediaSourceFactory = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(encrawDataSourceFactory)
+            .setLoadErrorHandlingPolicy(com.korenskoy.yandexmusic.data.player.PlaybackBuffering.PatientLoadErrors())
 
         return try {
             ExoPlayer.Builder(context, renderersFactory)
                 .setMediaSourceFactory(mediaSourceFactory)
+                .setLoadControl(com.korenskoy.yandexmusic.data.player.PlaybackBuffering.loadControl())
                 .setAudioAttributes(audioAttributes, /* handleAudioFocus= */ false)
                 .setHandleAudioBecomingNoisy(true)
                 .setWakeMode(C.WAKE_MODE_LOCAL)
@@ -55,6 +57,7 @@ object PlayerModule {
         } catch (e: Exception) {
             ExoPlayer.Builder(context, renderersFactory)
                 .setMediaSourceFactory(mediaSourceFactory)
+                .setLoadControl(com.korenskoy.yandexmusic.data.player.PlaybackBuffering.loadControl())
                 .setAudioAttributes(audioAttributes, /* handleAudioFocus= */ false)
                 .setHandleAudioBecomingNoisy(true)
                 .build()

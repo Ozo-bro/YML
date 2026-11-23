@@ -5,6 +5,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -67,7 +69,10 @@ class TrackDownloadManager @Inject constructor(
 
     fun getLocalTrackFile(trackId: String): File? {
         val file = File(tracksDir, "$trackId.mp3")
-        return if (file.exists() && file.length() > 0) file else null
+        if (file.exists() && file.length() > 0) return file
+        // Listed as downloaded, but missing from disk: rescan so it plays from the network.
+        if (trackId in _downloadedTrackIds.value) updateCacheStats()
+        return null
     }
 
     fun isTrackDownloaded(trackId: String): Boolean {
@@ -85,11 +90,25 @@ class TrackDownloadManager @Inject constructor(
      * only once the new file is complete (a better quality), so the track stays playable meanwhile.
      * The file keeps the `.mp3` name whatever the codec: the player detects the format from its content.
      */
+    private val trackLocks = java.util.concurrent.ConcurrentHashMap<String, Mutex>()
+
     suspend fun downloadTrack(
         trackId: String,
         url: String,
         quality: TrackPreloadManager.StreamQuality? = null,
         replace: Boolean = false
+    ): Boolean {
+        // One download per track so concurrent jobs never write the same temporary file together.
+        return trackLocks.getOrPut(trackId) { Mutex() }.withLock {
+            downloadNow(trackId, url, quality, replace)
+        }
+    }
+
+    private suspend fun downloadNow(
+        trackId: String,
+        url: String,
+        quality: TrackPreloadManager.StreamQuality?,
+        replace: Boolean
     ): Boolean = withContext(Dispatchers.IO) {
         if (!replace && isTrackDownloaded(trackId)) return@withContext true
 

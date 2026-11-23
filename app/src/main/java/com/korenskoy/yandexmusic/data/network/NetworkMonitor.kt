@@ -4,7 +4,7 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
-import android.net.NetworkRequest
+import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
@@ -12,8 +12,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.withContext
-import java.net.InetSocketAddress
-import java.net.Socket
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.io.IOException
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -31,7 +33,7 @@ class NetworkMonitor @Inject constructor(
             val caps = connectivityManager.getNetworkCapabilities(activeNetwork) ?: return false
             caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
         } catch (e: Exception) {
-            android.util.Log.e("NetworkMonitor", "Unexpected error", e)
+            Log.e("NetworkMonitor", "Unexpected error", e)
             false
         }
     }
@@ -43,28 +45,16 @@ class NetworkMonitor @Inject constructor(
                 trySend(true)
             }
 
-            override fun onLosing(network: Network, maxMsToLive: Int) {
-                super.onLosing(network, maxMsToLive)
-                trySend(false)
-            }
-
+            // The default network: moving from Wi-Fi to mobile data only replaces it, and this comes when
+            // there is no network left at all
             override fun onLost(network: Network) {
                 super.onLost(network)
-                trySend(false)
-            }
-
-            override fun onUnavailable() {
-                super.onUnavailable()
                 trySend(false)
             }
         }
 
         try {
-            val request = NetworkRequest.Builder()
-                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                .build()
-
-            connectivityManager.registerNetworkCallback(request, callback)
+            connectivityManager.registerDefaultNetworkCallback(callback)
 
             // Initial state
             val activeNetwork = connectivityManager.activeNetwork
@@ -76,7 +66,7 @@ class NetworkMonitor @Inject constructor(
                 trySend(false)
             }
         } catch (e: Exception) {
-            android.util.Log.e("NetworkMonitor", "Unexpected error", e)
+            Log.e("NetworkMonitor", "Unexpected error", e)
             trySend(true) // Fallback to true if we can't check
         }
 
@@ -84,18 +74,41 @@ class NetworkMonitor @Inject constructor(
             try {
                 connectivityManager.unregisterNetworkCallback(callback)
             } catch (e: Exception) {
-                android.util.Log.e("NetworkMonitor", "Unexpected error", e)
+                Log.e("NetworkMonitor", "Unexpected error", e)
             }
         }
     }.distinctUntilChanged()
 
-    suspend fun isYandexReachable(): Boolean = withContext(Dispatchers.IO) {
-        try {
-            Socket().use { socket ->
-                socket.connect(InetSocketAddress("oauth.yandex.ru", 443), 1500)
-            }
-            true
-        } catch (e: Exception) {
+    /** Its own small client: no account token, no cache; the connections of the app's client are not waited for. */
+    private val probeClient by lazy { OkHttpClient.Builder().followRedirects(false).retryOnConnectionFailure(false).build() }
+
+    /**
+     * Does Yandex's music server answer at all? Uses OkHttp HEAD so IPv6-only-broken networks, proxies,
+     * and DNS are handled the same way as the music streams.
+     */
+    suspend fun isYandexReachable(timeoutMs: Int = 1500): Boolean = withContext(Dispatchers.IO) {
+        answers(probeClient, PROBE_URL, timeoutMs)
+    }
+
+    /** Any answer from [url]: with no data to speak of, nothing of the account sent. */
+    suspend fun isReachable(url: String, timeoutMs: Int = 1500): Boolean = withContext(Dispatchers.IO) {
+        answers(probeClient, url, timeoutMs)
+    }
+
+    companion object {
+        private const val PROBE_URL = "https://api.music.yandex.net/"
+
+        /** Any HTTP answer, even an error page, means the server is there. */
+        internal fun answers(client: OkHttpClient, url: String, timeoutMs: Int): Boolean = try {
+            client.newBuilder()
+                .connectTimeout(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
+                .callTimeout(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
+                .build()
+                .newCall(Request.Builder().url(url).head().build())
+                .execute()
+                .use { true }
+        } catch (e: IOException) {
+            Log.d("NetworkMonitor", "No answer from $url: ${e.message}")
             false
         }
     }

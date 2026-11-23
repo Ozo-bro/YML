@@ -35,7 +35,8 @@ class AccountSessionManager @Inject constructor(
     private val playlistsRepository: UserPlaylistsRepository,
     private val cacheManager: PlaylistCacheManager,
     private val downloadManager: TrackDownloadManager,
-    private val downloadScheduler: DownloadScheduler
+    private val downloadScheduler: DownloadScheduler,
+    private val httpClient: dagger.Lazy<okhttp3.OkHttpClient>
 ) {
     /** Syncs outlive any screen. */
     private val scope = CoroutineScope(
@@ -154,6 +155,10 @@ class AccountSessionManager @Inject constructor(
     }
 
     private fun resetUserData() {
+        // Answers kept by the network cache belong to the account that asked: another one never gets them
+        scope.launch(Dispatchers.IO) {
+            runCatching { httpClient.get().cache?.evictAll() }.onFailure { Log.w(TAG, "Network cache not cleared", it) }
+        }
         libraryRepository.resetForAccountChange()
         // Also closes an opened playlist: it is no longer in the list
         playlistsRepository.resetForAccountChange()

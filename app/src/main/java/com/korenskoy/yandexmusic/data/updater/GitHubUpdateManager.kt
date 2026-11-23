@@ -1,5 +1,11 @@
 package com.korenskoy.yandexmusic.data.updater
 
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.launch
+import kotlin.coroutines.coroutineContext
+
 import androidx.core.net.toUri
 import android.content.Context
 import android.content.Intent
@@ -162,6 +168,7 @@ class GitHubUpdateManager @Inject constructor(
         val updatesDir = File(context.cacheDir, "updates").apply { mkdirs() }
         val tempFile = File(updatesDir, "YandexMusicLite_download.tmp")
         val targetFile = File(updatesDir, "YandexMusicLite.apk")
+        var watcher: Job? = null
 
         try {
             // Clean up old files before downloading
@@ -173,7 +180,15 @@ class GitHubUpdateManager @Inject constructor(
                 .header("User-Agent", "YandexMusicLite-Android")
                 .build()
 
-            val downloadResult = okHttpClient.newCall(request).execute().use { response ->
+            val call = okHttpClient.newCall(request)
+            watcher = launch {
+                try {
+                    awaitCancellation()
+                } finally {
+                    call.cancel()
+                }
+            }
+            val downloadResult = call.execute().use { response ->
                 if (!response.isSuccessful) {
                     return@withContext Result.failure(Exception("HTTP ${response.code} при скачивании обновления"))
                 }
@@ -229,9 +244,12 @@ class GitHubUpdateManager @Inject constructor(
 
             Result.success(targetFile)
         } catch (e: Exception) {
-            Log.e(TAG, "Error downloading APK", e)
             if (tempFile.exists()) tempFile.delete()
+            coroutineContext.ensureActive()
+            Log.e(TAG, "Error downloading APK", e)
             Result.failure(e)
+        } finally {
+            watcher?.cancel()
         }
     }
 
