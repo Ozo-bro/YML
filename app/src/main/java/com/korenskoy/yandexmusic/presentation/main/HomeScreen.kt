@@ -160,10 +160,20 @@ fun HomeScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = contentBottom)
         ) {
-            HiFiLargeTitle(
-                stringResource(R.string.wave_title),
-                modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 14.dp)
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 20.dp, end = 20.dp, top = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                HiFiLargeTitle(stringResource(R.string.wave_title), modifier = Modifier.weight(1f))
+                if (onOpenWaveTune != null) {
+                    GlassCircleButton(onClick = onOpenWaveTune, contentDescription = stringResource(R.string.wave_tune_title)) {
+                        Icon(Icons.Rounded.Tune, contentDescription = null, tint = if (waveTuned) HiFi.Accent else Color.White, modifier = Modifier.size(24.dp))
+                    }
+                }
+            }
             Spacer(Modifier.height(18.dp))
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { instrument() }
             Spacer(Modifier.height(22.dp))

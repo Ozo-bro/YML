@@ -39,6 +39,7 @@ class TrackPreloadManager @Inject constructor(
         const val URL_TTL_MS = 45 * 60 * 1000L // 45 минут
     }
 
+    private val maxCachedEntries = 500
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val resolvedUrls = ConcurrentHashMap<String, CachedTrackUrl>()
     private val inFlightRequests = ConcurrentHashMap<String, Deferred<String?>>()
@@ -321,6 +322,7 @@ class TrackPreloadManager @Inject constructor(
                     val stream = resolveBest(trackId) ?: return@async null
                     resolvedUrls[trackId] = CachedTrackUrl(stream.url, System.currentTimeMillis())
                     qualities[trackId] = stream.quality
+                    pruneMapsIfNeeded()
                     stream.url
                 } catch (e: Exception) {
                     Log.e("TrackPreloadManager", "Error resolving URL for track $trackId", e)
@@ -338,8 +340,26 @@ class TrackPreloadManager @Inject constructor(
         }
     }
 
+    private fun pruneMapsIfNeeded() {
+        val now = System.currentTimeMillis()
+        if (resolvedUrls.size > maxCachedEntries) {
+            resolvedUrls.entries.removeIf { now - it.value.fetchedAtMs > URL_TTL_MS }
+            if (resolvedUrls.size > maxCachedEntries) {
+                resolvedUrls.entries.sortedBy { it.value.fetchedAtMs }
+                    .take(resolvedUrls.size - maxCachedEntries / 2)
+                    .forEach { resolvedUrls.remove(it.key) }
+            }
+        }
+        if (qualities.size > maxCachedEntries) qualities.clear()
+        if (offered.size > maxCachedEntries) offered.clear()
+        if (lastLosslessError.size > maxCachedEntries) lastLosslessError.clear()
+    }
+
     fun clearCache() {
         resolvedUrls.clear()
+        qualities.clear()
+        offered.clear()
+        lastLosslessError.clear()
         inFlightRequests.values.forEach { it.cancel() }
         inFlightRequests.clear()
     }

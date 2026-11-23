@@ -881,23 +881,14 @@ class PlaybackController @Inject constructor(
 
     private fun isOffline(): Boolean = networkDown || !networkMonitor.isCurrentlyConnected()
 
-    /** A short request to Yandex: tells "connected" from "online" and updates [networkDown]. */
+    /** A short token-free HEAD request to Yandex: tells "connected" from "online" without queuing behind main API calls. */
     private suspend fun probeInternet(): Boolean {
         if (!networkMonitor.isCurrentlyConnected()) {
             networkDown = true
             return false
         }
         val ok = withTimeoutOrNull(PROBE_TIMEOUT_MS) {
-            try {
-                withContext(Dispatchers.IO) { api.getAccountStatus() }
-                true
-            } catch (e: retrofit2.HttpException) {
-                true // the server answered: online
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                false
-            }
+            networkMonitor.isYandexReachable(PROBE_TIMEOUT_MS.toInt())
         } == true
         if (networkDown != !ok) Log.i(TAG, if (ok) "Internet is back" else "Connected but no internet")
         networkDown = !ok

@@ -135,7 +135,7 @@ class WaveCache @Inject constructor(
         entries.retainAll { downloadManager.isTrackDownloaded(it.track.idString) }
         val limitBytes = limitMb.toLong() * 1024 * 1024
         var total = entries.sumOf { sizeOf(it) }
-        val keep = protectedIds
+        val keep = if (limitMb <= 0) emptySet() else protectedIds
         while (entries.isNotEmpty() && total > limitBytes) {
             val victimIndex = entries.indexOfFirst { it.track.idString !in keep }
                 .takeIf { it >= 0 } ?: break
