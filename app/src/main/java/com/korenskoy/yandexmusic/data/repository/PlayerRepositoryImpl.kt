@@ -96,6 +96,7 @@ class PlayerRepositoryImpl(
     private var outgoingPlayer: ExoPlayer? = null
     private var crossfadeJob: Job? = null
     private var playJob: Job? = null
+    private var prepareJob: Job? = null
     private var preloadedTrackId: String? = null
 
     // Volume requested by the crossfade, before ducking is applied.
@@ -192,6 +193,7 @@ class PlayerRepositoryImpl(
                 when {
                     player === outgoingPlayer -> {
                         // The fading-out track broke; just drop it.
+                        player.playWhenReady = false
                         player.stop()
                         player.clearMediaItems()
                         outgoingPlayer = null
@@ -207,6 +209,7 @@ class PlayerRepositoryImpl(
                     else -> {
                         // A preloaded standby went stale — never hand it to a transition.
                         if (preloadedTrackId == player.currentMediaItem?.mediaId) preloadedTrackId = null
+                        player.playWhenReady = false
                         player.stop()
                         player.clearMediaItems()
                     }
@@ -262,16 +265,17 @@ class PlayerRepositoryImpl(
     }
 
     override fun prepareNextTrack(trackId: String, url: String, title: String?, artist: String?, coverUrl: String?) {
-        if (preloadedTrackId == trackId || outgoingPlayer != null) return
-        scope.launch {
+        if (preloadedTrackId == trackId || outgoingPlayer != null || playJob?.isActive == true) return
+        prepareJob?.cancel()
+        prepareJob = scope.launch {
             val playUri = resolvePlayUri(trackId, url) ?: return@launch
             // State may have changed while the URL was resolving.
-            if (outgoingPlayer != null || _currentTrackId.value == trackId) return@launch
+            if (outgoingPlayer != null || playJob?.isActive == true || _currentTrackId.value == trackId) return@launch
 
             val standby = standbyPlayer
+            standby.playWhenReady = false
             standby.stop()
             setVolume(standby, 0f)
-            standby.playWhenReady = false
             standby.setMediaItem(buildMediaItem(trackId, playUri, title, artist, coverUrl), 0L)
             standby.prepare()
             preloadedTrackId = trackId
@@ -288,6 +292,7 @@ class PlayerRepositoryImpl(
         crossfade: Boolean,
         startPositionMs: Long
     ) {
+        prepareJob?.cancel()
         playJob?.cancel()
         playJob = scope.launch {
             val playUri = resolvePlayUri(trackId, url)
@@ -316,11 +321,18 @@ class PlayerRepositoryImpl(
 
         val current = activePlayer
         val incoming = standbyPlayer
+        val isCurrentAudible = current.isPlaying && current.playerError == null
+        val willCrossfade = crossfade && isCurrentAudible && crossfadeDurationMs > 0L
+
         val reusePreloaded = preloadedTrackId == trackId &&
             incoming.currentMediaItem?.mediaId == trackId &&
             incoming.playerError == null &&
             incoming.playbackState != Player.STATE_IDLE
         preloadedTrackId = null
+
+        // Reset playWhenReady and initial volume BEFORE prepare() so a recycled player never bursts at full volume.
+        incoming.playWhenReady = false
+        setVolume(incoming, if (willCrossfade) 0f else 1f)
 
         if (reusePreloaded) {
             if (startPositionMs > 0L) incoming.seekTo(startPositionMs)
@@ -330,21 +342,19 @@ class PlayerRepositoryImpl(
             incoming.prepare()
         }
 
-        val isCurrentAudible = current.isPlaying && current.playerError == null
         activePlayerIndex = 1 - activePlayerIndex
         _activePlayerState.value = incoming
 
-        if (crossfade && isCurrentAudible && crossfadeDurationMs > 0L) {
+        if (willCrossfade) {
             wakeLockHelper.acquireTransitionLock(30_000L)
             outgoingPlayer = current
-            setVolume(incoming, 0f)
             incoming.playWhenReady = true
             crossfadeJob = scope.launch { runCrossfade(current, incoming) }
         } else {
+            current.playWhenReady = false
             current.stop()
             current.clearMediaItems()
             setVolume(current, 1f)
-            setVolume(incoming, 1f)
             incoming.playWhenReady = true
         }
         refreshPlaybackState()
@@ -352,7 +362,8 @@ class PlayerRepositoryImpl(
 
     /**
      * Keeps [outgoing] audible until [incoming] actually renders audio, then blends them with an
-     * equal-power curve (cos² + sin² = 1) so perceived loudness stays constant.
+     * equal-power curve (cos² + sin² = 1) driven by wall-clock elapsed time so main-thread UI work
+     * never stretches or stutters the fade.
      */
     private suspend fun runCrossfade(outgoing: ExoPlayer, incoming: ExoPlayer) {
         val waitStart = SystemClock.elapsedRealtime()
@@ -364,21 +375,42 @@ class PlayerRepositoryImpl(
                 _playbackErrorEvent.tryEmit(PlaybackFailure(id, 0L, "READY_TIMEOUT"))
                 return
             }
-            delay(20)
+            delay(FADE_TICK_MS)
         }
 
         val outStartVolume = logicalVolume[indexOf(outgoing)]
-        // ~50 ms per volume step whatever the duration (60 steps for the default 3 s)
-        val steps = (crossfadeDurationMs / (CROSSFADE_DURATION_MS / CROSSFADE_STEPS)).toInt().coerceAtLeast(1)
-        val stepDelay = crossfadeDurationMs / steps
-        for (step in 1..steps) {
-            val angle = step.toDouble() / steps * (PI / 2.0)
-            setVolume(outgoing, (outStartVolume * cos(angle)).toFloat().coerceIn(0f, 1f))
-            setVolume(incoming, sin(angle).toFloat().coerceIn(0f, 1f))
-            delay(stepDelay)
+        val outDuration = outgoing.duration
+        val outRemaining = if (outDuration > 0L && outgoing.isPlaying) {
+            (outDuration - outgoing.currentPosition).coerceAtLeast(0L)
+        } else {
+            crossfadeDurationMs
+        }
+        val effectiveDurationMs = if (outgoing.isPlaying && outRemaining > 0L) {
+            minOf(crossfadeDurationMs, outRemaining).coerceAtLeast(MIN_CROSSFADE_MS)
+        } else {
+            0L
+        }
+
+        if (effectiveDurationMs > 0L && outStartVolume > 0f) {
+            val fadeStart = SystemClock.elapsedRealtime()
+            while (true) {
+                val elapsed = SystemClock.elapsedRealtime() - fadeStart
+                val fraction = (elapsed.toDouble() / effectiveDurationMs).coerceIn(0.0, 1.0)
+                val angle = fraction * (PI / 2.0)
+                setVolume(outgoing, (outStartVolume * cos(angle)).toFloat().coerceIn(0f, 1f))
+                setVolume(incoming, sin(angle).toFloat().coerceIn(0f, 1f))
+                if (fraction >= 1.0) break
+                delay(FADE_TICK_MS)
+            }
+            // Allow AudioTrack one tick at 0f before stopping outgoing to avoid an audible click.
+            delay(FADE_TICK_MS)
+        } else {
+            setVolume(outgoing, 0f)
+            setVolume(incoming, 1f)
         }
 
         outgoingPlayer = null
+        outgoing.playWhenReady = false
         outgoing.stop()
         outgoing.clearMediaItems()
         setVolume(outgoing, 1f)
@@ -396,12 +428,18 @@ class PlayerRepositoryImpl(
         crossfadeJob = null
         try {
             val startVolume = logicalVolume[indexOf(out)]
-            for (step in 1..QUICK_FADE_STEPS) {
-                setVolume(out, startVolume * (1f - step.toFloat() / QUICK_FADE_STEPS))
-                delay(QUICK_FADE_MS / QUICK_FADE_STEPS)
+            if (startVolume > 0f && out.isPlaying) {
+                val fadeStart = SystemClock.elapsedRealtime()
+                while (true) {
+                    val fraction = ((SystemClock.elapsedRealtime() - fadeStart).toFloat() / QUICK_FADE_MS).coerceIn(0f, 1f)
+                    setVolume(out, startVolume * (1f - fraction))
+                    if (fraction >= 1f) break
+                    delay(FADE_TICK_MS)
+                }
             }
         } finally {
             if (outgoingPlayer === out) {
+                out.playWhenReady = false
                 out.stop()
                 out.clearMediaItems()
                 setVolume(out, 1f)
@@ -415,6 +453,7 @@ class PlayerRepositoryImpl(
         crossfadeJob?.cancel()
         crossfadeJob = null
         outgoingPlayer?.let { out ->
+            out.playWhenReady = false
             out.stop()
             out.clearMediaItems()
             setVolume(out, 1f)
@@ -438,10 +477,15 @@ class PlayerRepositoryImpl(
             finishCrossfadeNow(restoreActiveVolume = false)
             val player = activePlayer
             val start = logicalVolume[indexOf(player)]
-            val steps = (durationMs / FADE_STEP_MS).toInt().coerceAtLeast(1)
-            for (step in 1..steps) {
-                setVolume(player, start * (1f - step.toFloat() / steps))
-                delay(FADE_STEP_MS)
+            if (durationMs > 0L && start > 0f && player.isPlaying) {
+                val fadeStart = SystemClock.elapsedRealtime()
+                while (true) {
+                    val fraction = ((SystemClock.elapsedRealtime() - fadeStart).toFloat() / durationMs).coerceIn(0f, 1f)
+                    setVolume(player, start * (1f - fraction))
+                    if (fraction >= 1f) break
+                    delay(FADE_TICK_MS)
+                }
+                delay(FADE_TICK_MS)
             }
             player.pause()
             setVolume(player, 1f)
@@ -469,9 +513,11 @@ class PlayerRepositoryImpl(
     }
 
     override fun stop() {
+        prepareJob?.cancel()
         playJob?.cancel()
         finishCrossfadeNow(restoreActiveVolume = true)
         for (p in listOf(playerA, playerB)) {
+            p.playWhenReady = false
             p.stop()
             p.clearMediaItems()
             setVolume(p, 1f)
@@ -488,6 +534,7 @@ class PlayerRepositoryImpl(
     override fun release() {
         scope.cancel()
         crossfadeJob?.cancel()
+        prepareJob?.cancel()
         playJob?.cancel()
         wakeLockHelper.releaseTransitionLock()
         playerA.release()
@@ -541,8 +588,8 @@ class PlayerRepositoryImpl(
         const val INCOMING_READY_TIMEOUT_MS = 8_000L
         const val DUCK_VOLUME = 0.2f
         const val QUICK_FADE_MS = 150L
-        private const val FADE_STEP_MS = 50L
-        private const val QUICK_FADE_STEPS = 6
+        private const val FADE_TICK_MS = 16L
+        private const val MIN_CROSSFADE_MS = 150L
         private const val PROGRESS_INTERVAL_MS = 100L
         private const val IDLE_INTERVAL_MS = 500L
         private const val EVENT_BUFFER = 16

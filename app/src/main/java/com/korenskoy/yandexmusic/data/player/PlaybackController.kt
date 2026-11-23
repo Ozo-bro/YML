@@ -128,6 +128,7 @@ class PlaybackController @Inject constructor(
     private val recentPlayedTrackIds = ArrayDeque<String>(RECENT_LIMIT)
 
     private var currentPlayJob: Job? = null
+    private var prepareStandbyJob: Job? = null
     private var bufferingWatchdog: Job? = null
     /** Incremented on every explicit start/stop so stale async callbacks can tell they were superseded. */
     private var startRequestId = 0L
@@ -276,9 +277,11 @@ class PlaybackController @Inject constructor(
         if (_currentSource.value == PlaylistSource.VIBE && !isOffline()) {
             waveCache.prefetch(playlist.drop(currentIndex + 1).take(2))
         }
+        // Cancel any in-flight standby prepare before starting the transition so it cannot
+        // overwrite the preloaded standby player right before PlayerRepositoryImpl reuses it.
+        prepareStandbyJob?.cancel()
         val upcoming = playlist.drop(currentIndex + 1).take(3).map { it.idString }
         if (upcoming.isNotEmpty()) preloadManager.preloadTracks(upcoming)
-        playlist.getOrNull(currentIndex + 1)?.let { prepareStandby(it) }
 
         // Continuous queue auto-refill: fewer than 20 tracks left in My Wave
         if (_currentSource.value == PlaylistSource.VIBE && playlist.size - currentIndex <= 20) {
@@ -519,6 +522,7 @@ class PlaybackController @Inject constructor(
 
     fun stopAndClear() {
         startRequestId++
+        prepareStandbyJob?.cancel()
         currentPlayJob?.cancel()
         _isStarting.value = false
         playerRepository.stop()
@@ -849,7 +853,8 @@ class PlaybackController @Inject constructor(
     }
 
     private fun prepareStandby(track: TrackDetailsDto) {
-        scope.launch {
+        prepareStandbyJob?.cancel()
+        prepareStandbyJob = scope.launch {
             val nextId = track.idString
             val downloaded = downloadManager.isKnownDownloaded(nextId)
             val url = if (downloaded) "" else preloadManager.getOrFetchUrl(nextId) ?: return@launch
