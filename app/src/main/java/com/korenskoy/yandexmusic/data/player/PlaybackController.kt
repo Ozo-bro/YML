@@ -273,9 +273,14 @@ class PlaybackController @Inject constructor(
         recordTrackPlayed(trackId)
 
         val currentIndex = playlist.indexOfFirst { it.idString == trackId }
-        // Offline wave: save the next wave tracks while there is a connection
-        if (_currentSource.value == PlaylistSource.VIBE && !isOffline()) {
-            waveCache.prefetch(playlist.drop(currentIndex + 1).take(2))
+        // Road playback cache: save the current and next tracks for any online source so tunnels
+        // and signal drops continue from disk at the same second instead of stalling.
+        if (_currentSource.value != PlaylistSource.OFFLINE && !isOffline()) {
+            val toCache = buildList {
+                add(track)
+                addAll(playlist.drop(currentIndex + 1).take(2))
+            }
+            waveCache.prefetch(toCache)
         }
         // Cancel any in-flight standby prepare before starting the transition so it cannot
         // overwrite the preloaded standby player right before PlayerRepositoryImpl reuses it.

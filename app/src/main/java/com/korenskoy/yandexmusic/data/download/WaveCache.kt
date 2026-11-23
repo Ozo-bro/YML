@@ -11,6 +11,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -50,6 +51,10 @@ class WaveCache @Inject constructor(
     private val mutex = Mutex()
     private val pending = Channel<TrackDetailsDto>(Channel.UNLIMITED)
     private var entries = mutableListOf<Entry>()
+    @Volatile
+    private var yieldUntilMs: Long = 0L
+    @Volatile
+    private var protectedIds: Set<String> = emptySet()
 
     private val _tracks = MutableStateFlow<List<TrackDetailsDto>>(emptyList())
     /** Cached wave tracks that are on disk, oldest first: for the offline mix. */
@@ -79,8 +84,15 @@ class WaveCache @Inject constructor(
         }
     }
 
-    /** Wave tracks coming up next: saved in the background unless they are on disk already. */
-    fun prefetch(tracks: List<TrackDetailsDto>) {
+    /**
+     * Road playback cache: queues the current and upcoming tracks for background caching while
+     * yielding briefly at track changes so ExoPlayer gets full bandwidth for smooth playback.
+     */
+    fun prefetch(tracks: List<TrackDetailsDto>, yieldMs: Long = YIELD_ON_TRACK_CHANGE_MS) {
+        protectedIds = tracks.map { it.idString }.toSet()
+        if (yieldMs > 0L) {
+            yieldUntilMs = android.os.SystemClock.elapsedRealtime() + yieldMs
+        }
         tracks.forEach { pending.trySend(it) }
     }
 
@@ -101,6 +113,12 @@ class WaveCache @Inject constructor(
         if (limit <= 0) return
         val id = track.idString
         if (downloadManager.isTrackDownloaded(id)) return // cached already, or downloaded by hand
+        // Yield briefly after a track switch so ExoPlayer finishes buffering without bandwidth contention.
+        while (true) {
+            val wait = yieldUntilMs - android.os.SystemClock.elapsedRealtime()
+            if (wait <= 0L) break
+            delay(wait.coerceAtMost(500L))
+        }
         val stream = preloadManager.resolveForDownload(id) ?: return
         if (!downloadManager.downloadTrack(id, stream.url, stream.quality)) return
         lyricsRepository.prefetch(id) // offline, the saved track shows its lyrics too
@@ -117,10 +135,13 @@ class WaveCache @Inject constructor(
         entries.retainAll { downloadManager.isTrackDownloaded(it.track.idString) }
         val limitBytes = limitMb.toLong() * 1024 * 1024
         var total = entries.sumOf { sizeOf(it) }
+        val keep = protectedIds
         while (entries.isNotEmpty() && total > limitBytes) {
-            val oldest = entries.removeAt(0)
-            total -= sizeOf(oldest)
-            downloadManager.removeTrack(oldest.track.idString)
+            val victimIndex = entries.indexOfFirst { it.track.idString !in keep }
+                .takeIf { it >= 0 } ?: break
+            val victim = entries.removeAt(victimIndex)
+            total -= sizeOf(victim)
+            downloadManager.removeTrack(victim.track.idString)
         }
         publish()
     }
@@ -147,5 +168,6 @@ class WaveCache @Inject constructor(
 
     private companion object {
         const val TAG = "WaveCache"
+        const val YIELD_ON_TRACK_CHANGE_MS = 2_500L
     }
 }
