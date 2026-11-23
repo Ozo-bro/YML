@@ -61,7 +61,8 @@ class PlaybackController @Inject constructor(
     private val settingsRepository: com.korenskoy.yandexmusic.domain.repository.SettingsRepository,
     private val networkMonitor: com.korenskoy.yandexmusic.data.network.NetworkMonitor,
     private val waveCache: com.korenskoy.yandexmusic.data.download.WaveCache,
-    private val downloadedTracks: com.korenskoy.yandexmusic.data.download.DownloadedLibrary
+    private val downloadedTracks: com.korenskoy.yandexmusic.data.download.DownloadedLibrary,
+    private val aiMarks: com.korenskoy.yandexmusic.data.ai.AiMarks
 ) {
     private val scope = CoroutineScope(
         SupervisorJob() + Dispatchers.Main.immediate + CoroutineExceptionHandler { _, e ->
@@ -127,6 +128,9 @@ class PlaybackController @Inject constructor(
     private var libraryTracks: List<TrackDetailsDto> = emptyList()
     private val recentPlayedTrackIds = ArrayDeque<String>(RECENT_LIMIT)
 
+    private val skipAi = settingsRepository.skipAi.stateIn(scope, SharingStarted.Eagerly, false)
+    private var currentChosen = true
+    private var leftForAiMark: String? = null
     private var currentPlayJob: Job? = null
     private var prepareStandbyJob: Job? = null
     private var bufferingWatchdog: Job? = null
@@ -154,6 +158,17 @@ class PlaybackController @Inject constructor(
         playerRepository.playbackErrorEvent.onEach { onPlaybackFailure(it) }.launchIn(scope)
         settingsRepository.crossfadeSeconds
             .onEach { playerRepository.setCrossfadeDuration(it * 1000L) }
+            .launchIn(scope)
+        // If an AI mark arrives shortly after a track auto-started, skip it right away.
+        aiMarks.marks
+            .onEach {
+                val track = _currentTrack.value ?: return@onEach
+                val id = track.idString
+                if (!currentChosen && skipAi.value && aiMarks.isAi(id) && leftForAiMark != id && progress.value < AI_LATE_LEAVE_MS) {
+                    leftForAiMark = id
+                    playNext(isAuto = true)
+                }
+            }
             .launchIn(scope)
         settingsRepository.shuffleEnabled
             .onEach { _shuffleEnabled.value = it }
@@ -233,8 +248,9 @@ class PlaybackController @Inject constructor(
         playlist: List<TrackDetailsDto>,
         source: PlaylistSource? = null,
         crossfade: Boolean = true,
-        startPositionMs: Long = 0L
-    ) = playTrackInternal(trackId, playlist, source, crossfade, startPositionMs, returnToWave = false)
+        startPositionMs: Long = 0L,
+        chosen: Boolean = true
+    ) = playTrackInternal(trackId, playlist, source, crossfade, startPositionMs, returnToWave = false, chosen = chosen)
 
     private fun playTrackInternal(
         trackId: String,
@@ -242,9 +258,20 @@ class PlaybackController @Inject constructor(
         source: PlaylistSource? = null,
         crossfade: Boolean = true,
         startPositionMs: Long = 0L,
-        returnToWave: Boolean = false
+        returnToWave: Boolean = false,
+        chosen: Boolean = true
     ) {
         val track = playlist.find { it.idString == trackId } ?: return
+        if (!chosen && skipAi.value && aiMarks.isAi(trackId)) {
+            val idx = playlist.indexOf(track)
+            val next = PlaybackQueue.nextMatching(playlist, idx) { !aiMarks.isAi(it.idString) }
+            if (next != null && playlist[next].idString != trackId) {
+                playTrackInternal(playlist[next].idString, playlist, source, crossfade, 0L, returnToWave = returnToWave, chosen = false)
+                return
+            }
+        }
+        currentChosen = chosen
+        leftForAiMark = null
         val requested = playlist
         val effectiveSource = source ?: _currentSource.value
         @Suppress("NAME_SHADOWING")
@@ -287,6 +314,7 @@ class PlaybackController @Inject constructor(
         prepareStandbyJob?.cancel()
         val upcoming = playlist.drop(currentIndex + 1).take(3).map { it.idString }
         if (upcoming.isNotEmpty()) preloadManager.preloadTracks(upcoming)
+        aiMarks.want(listOf(trackId) + playlist.drop(currentIndex + 1).take(AI_LOOK_AHEAD).map { it.idString })
 
         // Continuous queue auto-refill: fewer than 20 tracks left in My Wave
         if (_currentSource.value == PlaylistSource.VIBE && playlist.size - currentIndex <= 20) {
@@ -459,7 +487,7 @@ class PlaybackController @Inject constructor(
         val playlist = _currentPlaylist.value
         val currentIndex = playlist.indexOfFirst { it.idString == currentId }
         when (val action = PlaybackQueue.nextAction(playlist.size, currentIndex, _currentSource.value)) {
-            is NextAction.PlayIndex -> playTrack(playlist[action.index].idString, playlist)
+            is NextAction.PlayIndex -> playTrack(playlist[action.index].idString, playlist, chosen = !isAuto)
             NextAction.FetchMoreWave -> {
                 // End of the wave playlist: fetch more instead of stopping.
                 val request = ++startRequestId
@@ -1003,6 +1031,8 @@ class PlaybackController @Inject constructor(
 
     companion object {
         private const val TAG = "PlaybackController"
+        private const val AI_LOOK_AHEAD = 5
+        private const val AI_LATE_LEAVE_MS = 20_000L
         private const val RECENT_LIMIT = 100
         private const val MAX_FAILED_TRACKS = 3
         private const val URL_RETRY_DELAY_MS = 700L

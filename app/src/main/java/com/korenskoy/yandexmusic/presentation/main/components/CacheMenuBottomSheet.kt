@@ -42,6 +42,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.Login
 import androidx.compose.material.icons.automirrored.rounded.Logout
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Waves
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.CloudDownload
@@ -141,6 +142,8 @@ fun CacheMenuBottomSheet(
     onWaveCacheLimitChange: (Int) -> Unit = {},
     openCarModeOnStart: Boolean = true,
     onOpenCarModeOnStartChange: (Boolean) -> Unit = {},
+    skipAi: Boolean = false,
+    onSkipAiChange: (Boolean) -> Unit = {},
     steeringWheelOnLeft: Boolean = true,
     onSteeringWheelChange: (Boolean) -> Unit = {},
     uiScaleAuto: Boolean = true,
@@ -255,6 +258,14 @@ fun CacheMenuBottomSheet(
                     val playback: @Composable ColumnScope.() -> Unit = {
                         SettingsGroup(stringResource(R.string.settings_group_playback)) {
                             CrossfadeRow(crossfadeSeconds, onCrossfadeChange)
+                            SettingsRow(
+                                icon = Icons.Rounded.AutoAwesome,
+                                title = stringResource(R.string.settings_skip_ai),
+                                subtitle = stringResource(R.string.settings_skip_ai_hint),
+                                chevron = false,
+                                onClick = { onSkipAiChange(!skipAi) },
+                                trailing = { HiFiSwitch(checked = skipAi, onCheckedChange = onSkipAiChange) }
+                            )
                             SettingsRow(
                                 icon = Icons.Rounded.UploadFile,
                                 title = stringResource(R.string.settings_upgrade_downloads),

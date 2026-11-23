@@ -142,6 +142,7 @@ fun MainScreen(
 
     var currentTab by rememberSaveable { mutableStateOf(MainTab.HOME) }
     val openCarModeOnStart by viewModel.openCarModeOnStart.collectAsState()
+    val skipAi by viewModel.skipAi.collectAsState()
     var showSettings by rememberSaveable { mutableStateOf(false) }
     var showProgressModal by rememberSaveable { mutableStateOf(false) }
     // App start: straight into the car screen with the music on (a setting, on by default)
@@ -559,6 +560,8 @@ fun MainScreen(
                     onWaveCacheLimitChange = { viewModel.setWaveCacheLimitMb(it) },
                     openCarModeOnStart = openCarModeOnStart,
                     onOpenCarModeOnStartChange = { viewModel.setOpenCarModeOnStart(it) },
+                    skipAi = skipAi,
+                    onSkipAiChange = { viewModel.setSkipAi(it) },
                     steeringWheelOnLeft = steeringWheelOnLeft,
                     onSteeringWheelChange = { viewModel.setSteeringWheelOnLeft(it) },
                     uiScaleAuto = uiScaleAuto,

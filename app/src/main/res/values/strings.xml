@@ -268,4 +268,6 @@
     <string name="settings_version">Версия %1$s</string>
     <string name="settings_check_updates">Нажмите, чтобы проверить обновления</string>
     <string name="settings_cancel">Отмена</string>
+    <string name="settings_skip_ai">Пропускать музыку, созданную ИИ</string>
+    <string name="settings_skip_ai_hint">Треки, которые Яндекс отметил как созданные с использованием ИИ, νе включаются сами</string>
 </resources>

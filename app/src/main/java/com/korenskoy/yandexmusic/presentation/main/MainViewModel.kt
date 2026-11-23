@@ -84,6 +84,8 @@ class MainViewModel @Inject constructor(
     val waveCacheUsedBytes: StateFlow<Long> = waveCache.usedBytes
     val openCarModeOnStart: StateFlow<Boolean> = settingsRepository.openCarModeOnStart
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+    val skipAi: StateFlow<Boolean> = settingsRepository.skipAi
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     /** Once per screen session: true when the app should open in the car screen and start playing. */
     private var launchHandled = false
@@ -95,6 +97,10 @@ class MainViewModel @Inject constructor(
 
     fun setOpenCarModeOnStart(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setOpenCarModeOnStart(enabled) }
+    }
+
+    fun setSkipAi(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setSkipAi(enabled) }
     }
 
     fun startIfIdle(resumeRestored: Boolean) = playbackController.startIfIdle(resumeRestored)

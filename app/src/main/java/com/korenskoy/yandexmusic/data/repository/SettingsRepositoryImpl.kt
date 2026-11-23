@@ -83,6 +83,15 @@ class SettingsRepositoryImpl @Inject constructor(
         context.dataStore.edit { prefs -> prefs[OPEN_CAR_ON_START_KEY] = enabled }
     }
 
+    private val SKIP_AI_KEY = booleanPreferencesKey("skip_ai")
+    override val skipAi: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[SKIP_AI_KEY] ?: false
+    }
+
+    override suspend fun setSkipAi(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[SKIP_AI_KEY] = enabled }
+    }
+
     private val SHOW_LYRICS_KEY = booleanPreferencesKey("show_lyrics")
     override val showLyrics: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[SHOW_LYRICS_KEY] ?: true

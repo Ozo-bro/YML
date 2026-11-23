@@ -121,6 +121,12 @@ interface YandexMusicApi {
         @retrofit2.http.Field("revision") revision: Int
     ): ResponseWrapper<com.korenskoy.yandexmusic.data.dto.UserPlaylistDto>
 
+    @GET("tracks/{trackId}/credits")
+    suspend fun getTrackCredits(
+        @Path("trackId") trackId: String,
+        @retrofit2.http.Header("Accept-Language") language: String = "ru"
+    ): ResponseWrapper<com.korenskoy.yandexmusic.data.dto.TrackCreditsDto>
+
     @GET("tracks/{trackId}/download-info")
     suspend fun getTrackDownloadInfo(
         @Path("trackId") trackId: String

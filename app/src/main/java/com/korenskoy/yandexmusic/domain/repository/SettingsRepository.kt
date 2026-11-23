@@ -26,6 +26,8 @@ interface SettingsRepository {
     val waveCacheLimitMb: Flow<Int>
     /** Open the car screen when the app starts, and start the music. */
     val openCarModeOnStart: Flow<Boolean>
+    /** Tracks Yandex marks as made (wholly or partly) with AI do not play by themselves. Off by default. */
+    val skipAi: Flow<Boolean>
 
     suspend fun setDarkTheme(enabled: Boolean)
     suspend fun setAutoDownloadLikedTracks(enabled: Boolean)
@@ -39,6 +41,7 @@ interface SettingsRepository {
     suspend fun setShowLyrics(enabled: Boolean)
     suspend fun setWaveCacheLimitMb(limitMb: Int)
     suspend fun setOpenCarModeOnStart(enabled: Boolean)
+    suspend fun setSkipAi(enabled: Boolean)
 
     companion object {
         const val DEFAULT_CROSSFADE_SECONDS = 3

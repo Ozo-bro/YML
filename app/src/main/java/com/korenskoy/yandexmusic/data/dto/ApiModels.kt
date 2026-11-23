@@ -135,6 +135,17 @@ data class TrackAlbumDto(
     @SerialName("title") val title: String? = null
 )
 
+@Serializable
+data class TrackCreditsDto(
+    @SerialName("credits") val credits: List<CreditDto> = emptyList()
+)
+
+@Serializable
+data class CreditDto(
+    @SerialName("title") val title: String? = null,
+    @SerialName("value") val value: String? = null
+)
+
 /** A user's playlist from `users/{uid}/playlists/list` (without tracks) or `playlists/{kind}` (with tracks). */
 @Serializable
 data class UserPlaylistDto(
