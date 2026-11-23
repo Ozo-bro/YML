@@ -340,6 +340,18 @@ data class RotorStationTracksResponseDto(
 )
 
 @Serializable
+data class RotorStationInfoDto(
+    @SerialName("settings2") val settings2: RotorSettingsDto? = null
+)
+
+@Serializable
+data class RotorSettingsDto(
+    @SerialName("diversity") val diversity: String? = null,
+    @SerialName("moodEnergy") val moodEnergy: String? = null,
+    @SerialName("language") val language: String? = null
+)
+
+@Serializable
 data class RotorSequenceItemDto(
     @SerialName("track") val track: TrackDetailsDto? = null,
     @SerialName("liked") val liked: Boolean? = null

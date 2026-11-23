@@ -30,6 +30,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Favorite
@@ -93,7 +94,9 @@ fun HomeScreen(
     onOpenQueue: () -> Unit,
     onUpNextClick: (TrackDetailsDto) -> Unit,
     contentBottom: Dp = 100.dp,
-    onOpenSettings: (() -> Unit)? = null
+    onOpenSettings: (() -> Unit)? = null,
+    waveTuned: Boolean = false,
+    onOpenWaveTune: (() -> Unit)? = null
 ) {
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     val windowSize = com.korenskoy.yandexmusic.utils.currentWindowSizeDp()
@@ -131,11 +134,16 @@ fun HomeScreen(
             // The knob takes only its own width; the rest goes to the track and a tall "next" list
             Box(Modifier.padding(horizontal = 24.dp), contentAlignment = Alignment.Center) { instrument() }
             Column(Modifier.weight(1f).fillMaxHeight().padding(start = 8.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     HiFiLargeTitle(stringResource(R.string.wave_title), modifier = Modifier.weight(1f))
+                    if (onOpenWaveTune != null) {
+                        GlassCircleButton(onClick = onOpenWaveTune, contentDescription = stringResource(R.string.wave_tune_title)) {
+                            Icon(Icons.Rounded.Tune, contentDescription = null, tint = if (waveTuned) HiFi.Accent else Color.White, modifier = Modifier.size(24.dp))
+                        }
+                    }
                     if (onOpenSettings != null) {
                         GlassCircleButton(onClick = onOpenSettings, contentDescription = stringResource(R.string.library_settings)) {
-                            Icon(Icons.Rounded.Tune, contentDescription = null, tint = Color.White, modifier = Modifier.size(26.dp))
+                            Icon(Icons.Rounded.Settings, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
                         }
                     }
                 }

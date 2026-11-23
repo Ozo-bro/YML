@@ -110,6 +110,7 @@ class MainViewModel @Inject constructor(
     // region Playback state
 
     val currentSource: StateFlow<PlaylistSource> = playbackController.currentSource
+    val waveTuning: StateFlow<com.korenskoy.yandexmusic.domain.model.WaveTuning> = playbackController.waveTuning
     val shuffleEnabled: StateFlow<Boolean> = playbackController.shuffleEnabled
     val repeatOne: StateFlow<Boolean> = playbackController.repeatOne
     val offline: StateFlow<Boolean> = playbackController.offline
@@ -238,6 +239,7 @@ class MainViewModel @Inject constructor(
     fun toggleRepeatOne() = playbackController.toggleRepeatOne()
     fun playDownloaded() = playbackController.playDownloaded()
     fun playByVoice(phrase: String) = playbackController.playByVoice(phrase)
+    fun setWaveTuning(tuning: com.korenskoy.yandexmusic.domain.model.WaveTuning) = playbackController.updateWaveTuning(tuning)
 
     fun playHits(shuffle: Boolean = true) = playbackController.playHits(libraryRepository.weeklyHits.value, shuffle)
 

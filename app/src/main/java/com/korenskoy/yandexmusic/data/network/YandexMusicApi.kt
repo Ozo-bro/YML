@@ -197,6 +197,14 @@ interface YandexMusicApi {
         @retrofit2.http.Query("queue") queue: String? = null
     ): ResponseWrapper<com.korenskoy.yandexmusic.data.dto.RotorStationTracksResponseDto>
 
+    @GET("rotor/station/user:onyourwave/info")
+    suspend fun getMyWaveInfo(): ResponseWrapper<List<com.korenskoy.yandexmusic.data.dto.RotorStationInfoDto>>
+
+    @retrofit2.http.POST("rotor/station/user:onyourwave/settings2")
+    suspend fun setMyWaveSettings(
+        @retrofit2.http.Body settings: kotlinx.serialization.json.JsonObject
+    ): ResponseWrapper<kotlinx.serialization.json.JsonElement>
+
     @retrofit2.http.POST("rotor/station/user:onyourwave/feedback")
     @retrofit2.http.FormUrlEncoded
     suspend fun sendRotorFeedback(

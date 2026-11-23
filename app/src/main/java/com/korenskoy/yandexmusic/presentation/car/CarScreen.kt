@@ -42,6 +42,10 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Tune
+import com.korenskoy.yandexmusic.domain.model.WaveTuning
+import com.korenskoy.yandexmusic.presentation.hifi.HiFi
+import com.korenskoy.yandexmusic.presentation.main.components.WaveTuneContent
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
@@ -195,12 +199,16 @@ fun CarScreen(
     onEnter: (() -> Unit)? = null,
     onOpenSettings: (() -> Unit)? = null,
     onVoiceSearch: (() -> Unit)? = null,
+    waveTuning: WaveTuning = WaveTuning(),
+    onWaveTuningChange: (WaveTuning) -> Unit = {},
     /** No internet: a badge in the top line (the music then comes from the downloads). */
     offline: Boolean = false
 ) {
     androidx.activity.compose.BackHandler(onBack = onExit)
     var showPlaylists by remember { mutableStateOf(false) }
+    var showWaveTune by remember { mutableStateOf(false) }
     androidx.activity.compose.BackHandler(enabled = showPlaylists) { showPlaylists = false }
+    androidx.activity.compose.BackHandler(enabled = showWaveTune) { showWaveTune = false }
     val view = androidx.compose.ui.platform.LocalView.current
     DisposableEffect(Unit) {
         view.keepScreenOn = true
@@ -262,7 +270,14 @@ fun CarScreen(
         val u = Scale(s.coerceIn(0.5f, 2f))
 
         val side: @Composable (Modifier) -> Unit = { modifier ->
-            if (showPlaylists) {
+            if (showWaveTune) {
+                WaveTuneContent(
+                    tuning = waveTuning,
+                    onChange = onWaveTuningChange,
+                    onClose = { showWaveTune = false },
+                    modifier = modifier
+                )
+            } else if (showPlaylists) {
                 PlaylistsPanel(
                     u, playlists, startingPlaylistKind, pickPlaylist, likedTrackIds.size,
                     { onPlayFavorites(); showPlaylists = false }, { showPlaylists = false }, modifier
@@ -292,7 +307,20 @@ fun CarScreen(
             androidx.compose.material3.LocalTextStyle provides androidx.compose.material3.LocalTextStyle.current.copy(lineHeight = TextUnit.Unspecified)
         ) {
             Column(Modifier.fillMaxSize().systemBarsPadding()) {
-                CarHeader(u, sourceLabel, currentTrack, onExit, onOpenSettings, onVoiceSearch, offline)
+                CarHeader(
+                    u = u,
+                    sourceLabel = sourceLabel,
+                    track = currentTrack,
+                    onExit = onExit,
+                    onOpenSettings = onOpenSettings,
+                    onVoiceSearch = onVoiceSearch,
+                    waveTuned = !waveTuning.isDefault,
+                    onOpenWaveTune = {
+                        showWaveTune = !showWaveTune
+                        if (showWaveTune) showPlaylists = false
+                    },
+                    offline = offline
+                )
                 if (isLandscape) {
                     Row(
                         Modifier.fillMaxSize().padding(start = u(40f), end = u(40f), bottom = u(28f)),
@@ -332,7 +360,17 @@ private data class SourceItem(val source: CarSource, val icon: ImageVector, val 
 
 /** Top line: back, what plays (source · title · artist), the clock. */
 @Composable
-private fun CarHeader(u: Scale, sourceLabel: String, track: TrackDetailsDto?, onExit: () -> Unit, onOpenSettings: (() -> Unit)?, onVoiceSearch: (() -> Unit)?, offline: Boolean) {
+private fun CarHeader(
+    u: Scale,
+    sourceLabel: String,
+    track: TrackDetailsDto?,
+    onExit: () -> Unit,
+    onOpenSettings: (() -> Unit)?,
+    onVoiceSearch: (() -> Unit)?,
+    waveTuned: Boolean,
+    onOpenWaveTune: () -> Unit,
+    offline: Boolean
+) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -387,6 +425,10 @@ private fun CarHeader(u: Scale, sourceLabel: String, track: TrackDetailsDto?, on
         }
         Spacer(Modifier.width(u(20f)))
         CarClock(u)
+        Spacer(Modifier.width(u(16f)))
+        FlatRound(u(64f), stringResource(R.string.wave_tune_title), onClick = onOpenWaveTune) {
+            Icon(Icons.Rounded.Tune, contentDescription = null, tint = if (waveTuned) HiFi.Accent else Color.White, modifier = Modifier.size(u(30f)))
+        }
         if (onVoiceSearch != null) {
             Spacer(Modifier.width(u(16f)))
             FlatRound(u(64f), stringResource(R.string.voice_search), onClick = onVoiceSearch) {

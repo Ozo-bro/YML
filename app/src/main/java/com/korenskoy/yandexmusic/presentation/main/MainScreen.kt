@@ -1,6 +1,7 @@
 package com.korenskoy.yandexmusic.presentation.main
 
 import androidx.lifecycle.repeatOnLifecycle
+import com.korenskoy.yandexmusic.presentation.main.components.WaveTuneOverlay
 import com.korenskoy.yandexmusic.presentation.voice.rememberVoiceInput
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -144,6 +145,8 @@ fun MainScreen(
     var currentTab by rememberSaveable { mutableStateOf(MainTab.HOME) }
     val openCarModeOnStart by viewModel.openCarModeOnStart.collectAsState()
     val skipAi by viewModel.skipAi.collectAsState()
+    val waveTuning by viewModel.waveTuning.collectAsState()
+    var showWaveTune by remember { mutableStateOf(false) }
     val searchVoice = rememberVoiceInput { phrase ->
         searchVm.onQueryChange(phrase)
         searchVm.rememberQuery()
@@ -284,7 +287,9 @@ fun MainScreen(
                         onOpenQueue = { isPlayerExpanded = true },
                         onUpNextClick = { viewModel.playTrack(it.idString, currentPlaylist, PlaylistSource.VIBE) },
                         contentBottom = if (waveActive && !isLandscape) 100.dp else contentBottom,
-                        onOpenSettings = { showSettings = true }
+                        onOpenSettings = { showSettings = true },
+                        waveTuned = !waveTuning.isDefault,
+                        onOpenWaveTune = { showWaveTune = true }
                     )
                     MainTab.SEARCH -> SearchScreen(
                         query = searchQuery,
@@ -404,6 +409,8 @@ fun MainScreen(
                             onEnter = { viewModel.startIfIdle(resumeRestored = false) },
                             offline = offline,
                             onVoiceSearch = carVoice,
+                            waveTuning = waveTuning,
+                            onWaveTuningChange = { viewModel.setWaveTuning(it) },
                             onOpenSettings = { showSettings = true }
                         )
                     }
@@ -607,6 +614,14 @@ fun MainScreen(
                         viewModel.cancelDownloadAll()
                         showProgressModal = false
                     }
+                )
+            }
+
+            if (showWaveTune) {
+                WaveTuneOverlay(
+                    tuning = waveTuning,
+                    onChange = { viewModel.setWaveTuning(it) },
+                    onDismiss = { showWaveTune = false }
                 )
             }
 

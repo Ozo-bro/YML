@@ -9,6 +9,9 @@ import com.korenskoy.yandexmusic.data.cache.PlaybackSnapshot
 import com.korenskoy.yandexmusic.data.cache.PlaybackStateStore
 import com.korenskoy.yandexmusic.data.cache.PlaylistCacheManager
 import com.korenskoy.yandexmusic.data.dto.TrackDetailsDto
+import com.korenskoy.yandexmusic.domain.model.WaveTuning
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import com.korenskoy.yandexmusic.data.network.TrackDownloadManager
 import com.korenskoy.yandexmusic.data.network.TrackPreloadManager
 import com.korenskoy.yandexmusic.data.network.YandexMusicApi
@@ -125,6 +128,8 @@ class PlaybackController @Inject constructor(
     }.stateIn(scope, SharingStarted.Eagerly, 0L)
 
     private val wavePlaylist = MutableStateFlow<List<TrackDetailsDto>>(emptyList())
+    private val _waveTuning = MutableStateFlow(WaveTuning())
+    val waveTuning: StateFlow<WaveTuning> = _waveTuning.asStateFlow()
     private var libraryTracks: List<TrackDetailsDto> = emptyList()
     private val recentPlayedTrackIds = ArrayDeque<String>(RECENT_LIMIT)
 
@@ -608,9 +613,51 @@ class PlaybackController @Inject constructor(
         recentPlayedTrackIds.clear()
     }
 
-    /** Silent My Wave refresh on launch: append fresh unplayed tracks and warm their URLs. */
+    /** Silent My Wave refresh on launch: append fresh unplayed tracks and load server wave tuning. */
     fun primeWave() {
         fetchMoreVibeTracks()
+        scope.launch {
+            runCatching {
+                val info = withContext(Dispatchers.IO) { api.getMyWaveInfo().result?.firstOrNull()?.settings2 }
+                if (info != null) {
+                    _waveTuning.value = WaveTuning.fromWire(info.diversity, info.moodEnergy, info.language)
+                }
+            }.onFailure { Log.d(TAG, "Wave info load failed: ${it.message}") }
+        }
+    }
+
+    /** Updates My Wave character/mood/language on the server and refreshes the upcoming wave queue. */
+    fun updateWaveTuning(tuning: WaveTuning) {
+        if (_waveTuning.value == tuning) return
+        _waveTuning.value = tuning
+        scope.launch {
+            val body = buildJsonObject {
+                put("diversity", tuning.diversity.wire)
+                put("moodEnergy", tuning.mood.wire)
+                put("language", tuning.language.wire)
+            }
+            val ok = try {
+                withContext(Dispatchers.IO) { api.setMyWaveSettings(body) }
+                true
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(TAG, "Wave tuning update failed", e)
+                false
+            }
+            if (!ok) return@launch
+            wavePlaylist.value = emptyList()
+            fetchMoreVibeTracks { fetched ->
+                if (!fetched) return@fetchMoreVibeTracks
+                if (_currentSource.value == PlaylistSource.VIBE) {
+                    val current = _currentTrack.value
+                    val fresh = wavePlaylist.value.filter { it.idString != current?.idString }
+                    if (current != null && fresh.isNotEmpty()) {
+                        _currentPlaylist.value = listOf(current) + fresh
+                    }
+                }
+            }
+        }
     }
 
     /** Pause playback after [minutes] with a gentle fade, like the sleep timer in Apple Music. */
